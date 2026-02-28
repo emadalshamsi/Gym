@@ -4,3 +4,4 @@ requests
 deep-translator
 python-dotenv
 uvicorn
+gunicorn
