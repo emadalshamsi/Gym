@@ -21,14 +21,21 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 def fetch_nutrition(food_name_en):
     try:
         api_url = f'https://api.api-ninjas.com/v1/nutrition?query={food_name_en}'
+        # تأكد أن اسم المتغير هنا يطابق تماماً ما كتبت في Render
         response = requests.get(api_url, headers={'X-Api-Key': NINJAS_API_KEY}, timeout=5)
-        data = response.json()
         
-        # التأكد أن الرد قائمة بيانات صحيحة وليس رسالة نصية (Premium Error)
-        if isinstance(data, list) and len(data) > 0:
-            return data
+        # هذه السطور ستطبع لنا في سجلات Render ماذا يحدث بالضبط
+        print(f"--- API DEBUG START ---")
+        print(f"Query: {food_name_en}")
+        print(f"Status Code: {response.status_code}")
+        print(f"Response Text: {response.text}")
+        print(f"--- API DEBUG END ---")
+        
+        if response.status_code == 200:
+            return response.json()
         return []
-    except:
+    except Exception as e:
+        print(f"Connection Error: {e}")
         return []
 
 @app.post("/log_meal")
