@@ -1,16 +1,25 @@
 import os, requests, json, re, logging
-from fastapi import FastAPI, Form, Query, Request
+from fastapi import FastAPI, Form, Query, Request, UploadFile, File
 from supabase import create_client, Client
 from dotenv import load_dotenv
 from datetime import datetime
+from fastapi.middleware.cors import CORSMiddleware
 
-# --- إعدادات المراقبة (لرؤية ما يحدث لحظياً) ---
+# --- إعدادات المراقبة ---
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 1. إعداد البيئة والربط
 load_dotenv()
 app = FastAPI(title="AI Fitness App Backend")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
@@ -18,124 +27,91 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# --- Middleware لمراقبة كل حركة على السيرفر ---
+# --- Middleware لمراقبة الطلبات ---
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    logger.info(f"إجراء طلب: {request.method} على {request.url}")
+    logger.info(f"Request: {request.method} {request.url}")
     response = await call_next(request)
-    logger.info(f"حالة الرد: {response.status_code}")
     return response
 
-# --- العقل المدبر: محرك Gemini AI ---
+# --- محرك Gemini AI للتغذية ---
 def get_ai_nutrition_estimate(food_query):
-    """تحليل النص التراثي واستخراج القيم الغذائية بدقة"""
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-    prompt = f"""
-    Analyze the food entry: "{food_query}".
-    Estimate nutrition and weight. Return ONLY a raw JSON: 
-    {{"cal": calories, "prot": protein_g, "carb": carbs_g, "fat": fat_g, "weight": weight_in_grams}}
-    Sum values if multiple items are mentioned. Estimate weight logically if not stated.
-    """
+    prompt = f'Analyze: "{food_query}". Return ONLY JSON: {{"cal": calories, "prot": protein, "carb": carbs, "fat": fat, "weight": grams}}'
     try:
         response = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=10)
-        data = response.json()
-        ai_text = data['candidates'][0]['content']['parts'][0]['text']
-        match = re.search(r'\{.*\}', ai_text, re.DOTALL)
-        if match:
-            return json.loads(match.group())
-        raise ValueError("No JSON found")
-    except Exception as e:
-        logger.error(f"خطأ في تحليل Gemini: {e}")
-        return {"cal": 250, "prot": 15, "carb": 10, "fat": 15, "weight": 200} # قيم افتراضية آمنة
+        match = re.search(r'\{.*\}', response.json()['candidates'][0]['content']['parts'][0]['text'], re.DOTALL)
+        return json.loads(match.group()) if match else {"cal": 250, "prot": 15, "carb": 10, "fat": 15, "weight": 200}
+    except:
+        return {"cal": 250, "prot": 15, "carb": 10, "fat": 15, "weight": 200}
 
-# --- 1. مسارات التغذية (Nutrition) ---
+# --- 1. التغذية والماء والتمارين ---
 @app.post("/log_meal")
 async def log_meal(user_id: str = Query(...), meal_type: str = Query(...), items_ar: str = Form(...)):
-    try:
-        try:
-            items_list = json.loads(items_ar.replace("'", '"'))
-        except:
-            items_list = [items_ar.strip()]
-
-        meal_res = supabase.table("meals").insert({"user_id": user_id, "meal_type": meal_type}).execute()
-        meal_id = meal_res.data[0]['id']
-        added_items = []
-
-        for item_ar in items_list:
-            nutri = get_ai_nutrition_estimate(item_ar)
-            payload = {
-                "meal_id": meal_id, "food_name": item_ar, 
-                "calories": float(nutri.get('cal', 0)), "protein": float(nutri.get('prot', 0)),
-                "carbs": float(nutri.get('carb', 0)), "fat": float(nutri.get('fat', 0)),
-                "weight_grams": float(nutri.get('weight', 0))
-            }
-            supabase.table("meal_items").insert(payload).execute()
-            added_items.append(payload)
-        return {"status": "success", "items": added_items}
-    except Exception as e:
-        return {"status": "error", "detail": str(e)}
+    meal_res = supabase.table("meals").insert({"user_id": user_id, "meal_type": meal_type}).execute()
+    meal_id = meal_res.data[0]['id']
+    nutri = get_ai_nutrition_estimate(items_ar)
+    payload = {"meal_id": meal_id, "food_name": items_ar, "calories": float(nutri['cal']), "protein": float(nutri['prot']), "carbs": float(nutri['carb']), "fat": float(nutri['fat']), "weight_grams": float(nutri['weight'])}
+    supabase.table("meal_items").insert(payload).execute()
+    return {"status": "success", "data": payload}
 
 @app.get("/get_daily_intake")
 async def get_daily_intake(user_id: str = Query(...)):
-    try:
-        profile = supabase.table("profiles").select("*").eq("id", user_id).single().execute()
-        targets = {"cal": profile.data.get("target_calories", 2000), "prot": 165.0, "fat": 55.0, "carb": 113.0}
-        
-        today = datetime.now().strftime("%Y-%m-%d")
-        meals = supabase.table("meals").select("id").eq("user_id", user_id).gte("created_at", today).execute()
-        meal_ids = [m['id'] for m in meals.data]
-        
-        items = supabase.table("meal_items").select("*").in_("meal_id", meal_ids).execute()
-        totals = {"cal": 0, "prot": 0, "fat": 0, "carb": 0}
-        for i in items.data:
-            totals["cal"] += i.get("calories", 0); totals["prot"] += i.get("protein", 0)
-            totals["fat"] += i.get("fat", 0); totals["carb"] += i.get("carbs", 0)
+    profile = supabase.table("profiles").select("*").eq("id", user_id).single().execute()
+    targets = {"cal": profile.data.get("target_calories", 2000), "prot": 165.0, "fat": 55.0, "carb": 113.0}
+    today = datetime.now().strftime("%Y-%m-%d")
+    meals = supabase.table("meals").select("id").eq("user_id", user_id).gte("created_at", today).execute()
+    meal_ids = [m['id'] for m in meals.data]
+    items = supabase.table("meal_items").select("*").in_("meal_id", meal_ids).execute()
+    totals = {"cal": sum(i['calories'] for i in items.data), "prot": sum(i['protein'] for i in items.data), "fat": sum(i['fat'] for i in items.data), "carb": sum(i['carbs'] for i in items.data)}
+    return {"totals": totals, "targets": targets}
 
-        return {"status": "success", "data": totals, "targets": targets}
-    except Exception as e:
-        return {"status": "error", "detail": str(e)}
-
-# --- 2. مسارات الماء (Water) ---
 @app.post("/log_water")
 async def log_water(user_id: str = Query(...), amount_ml: int = Query(...)):
     return supabase.table("water_logs").insert({"user_id": user_id, "amount_ml": amount_ml}).execute()
 
-@app.get("/get_water_status")
-async def get_water_status(user_id: str = Query(...)):
-    profile = supabase.table("profiles").select("target_water_ml").eq("id", user_id).single().execute()
-    today = datetime.now().strftime("%Y-%m-%d")
-    logs = supabase.table("water_logs").select("amount_ml").eq("user_id", user_id).gte("created_at", today).execute()
-    total = sum([l['amount_ml'] for l in logs.data])
-    return {"current": total, "target": profile.data.get("target_water_ml", 2500)}
-
-# --- 3. مسارات التمارين (Workouts) ---
 @app.post("/log_workout")
-async def log_workout(user_id: str = Query(...), workout_name: str = Form(...), duration_min: int = Form(...)):
-    return supabase.table("workouts").insert({"user_id": user_id, "workout_name": workout_name, "duration_min": duration_min}).execute()
+async def log_workout(user_id: str = Query(...), name: str = Form(...), mins: int = Form(...)):
+    return supabase.table("workouts").insert({"user_id": user_id, "workout_name": name, "duration_min": mins}).execute()
 
-# --- 4. لوحة النتائج (Dashboard) ---
+# --- 2. المهام المجدولة (Scheduled Tasks) ---
+@app.post("/add_task")
+async def add_task(user_id: str = Query(...), task_name: str = Form(...)):
+    """إضافة مهمة جديدة (مثلاً: جلسة يوجا)"""
+    return supabase.table("tasks").insert({"user_id": user_id, "task_name": task_name, "is_completed": False}).execute()
+
+@app.post("/complete_task")
+async def complete_task(task_id: int = Query(...)):
+    """تحديد المهمة كمكتملة"""
+    return supabase.table("tasks").update({"is_completed": True}).eq("id", task_id).execute()
+
+# --- 3. البروفايل والصور ---
+@app.post("/upload_profile_pic")
+async def upload_profile_pic(user_id: str = Query(...), file: UploadFile = File(...)):
+    content = await file.read()
+    path = f"profiles/{user_id}.jpg"
+    supabase.storage.from_("avatars").upload(path, content, {"content-type": "image/jpeg"})
+    url = supabase.storage.from_("avatars").get_public_url(path)
+    supabase.table("profiles").update({"profile_pic_url": url}).eq("id", user_id).execute()
+    return {"url": url}
+
+# --- 4. النتيجة الإجمالية (Dashboard Score) ---
 @app.get("/get_overall_score")
 async def get_overall_score(user_id: str = Query(...)):
-    try:
-        today = datetime.now().strftime("%Y-%m-%d")
-        intake = await get_daily_intake(user_id)
-        nutrition_score = min((intake['data']['cal'] / intake['targets']['cal']) * 50, 50) if intake['targets']['cal'] > 0 else 0
+    today = datetime.now().strftime("%Y-%m-%d")
+    # تغذية (40%) + ماء (20%) + تمارين (20%) + مهام (20%)
+    intake = await get_daily_intake(user_id)
+    score = min((intake['totals']['cal'] / intake['targets']['cal']) * 40, 40) if intake['targets']['cal'] > 0 else 0
+    
+    water_res = supabase.table("water_logs").select("amount_ml").eq("user_id", user_id).gte("created_at", today).execute()
+    score += min((sum(w['amount_ml'] for w in water_res.data) / 2500) * 20, 20)
+    
+    work_res = supabase.table("workouts").select("duration_min").eq("user_id", user_id).gte("created_at", today).execute()
+    score += min((sum(w['duration_min'] for w in work_res.data) / 45) * 20, 20)
+    
+    task_res = supabase.table("tasks").select("*").eq("user_id", user_id).gte("created_at", today).execute()
+    if task_res.data:
+        done = len([t for t in task_res.data if t['is_completed']])
+        score += (done / len(task_res.data)) * 20
 
-        water = await get_water_status(user_id)
-        water_score = min((water['current'] / water['target']) * 25, 25) if water['target'] > 0 else 0
-
-        workouts = supabase.table("workouts").select("duration_min").eq("user_id", user_id).gte("created_at", today).execute()
-        total_work = sum([w['duration_min'] for w in workouts.data])
-        workout_score = min((total_work / 45) * 25, 25) # الهدف 45 دقيقة
-
-        total = int(nutrition_score + water_score + workout_score)
-        return {"overall_score": total, "display": f"{total}/100"}
-    except:
-        return {"overall_score": 0}
-
-@app.post("/calculate_goals")
-async def calculate_goals(user_id: str = Query(...), weight: float = Query(...), height: float = Query(...), age: int = Query(...), gender: str = Query(...), activity: str = Query(...), goal: str = Query(...)):
-    bmr = (10 * weight) + (6.25 * height) - (5 * age) + (5 if gender.lower() == "male" else -161)
-    tdee = bmr * {"sedentary": 1.2, "light": 1.375, "moderate": 1.55, "active": 1.725}.get(activity.lower(), 1.2)
-    target_cal = tdee - 500 if goal.lower() == "lose" else tdee + 500 if goal.lower() == "gain" else tdee
-    return supabase.table("profiles").upsert({"id": user_id, "weight": weight, "height": height, "age": age, "gender": gender, "target_calories": int(target_cal), "target_water_ml": int(weight * 35)}).execute()
+    return {"score": int(score), "display": f"{int(score)}/100"}
