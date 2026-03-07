@@ -15,10 +15,11 @@ app = FastAPI(title="AI Fitness App Backend")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
