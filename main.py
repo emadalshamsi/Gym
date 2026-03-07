@@ -28,7 +28,12 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+@app.get("/")
+async def root():
+    return {"status": "alive", "message": "Gym App Backend is running"}
+
 # --- Middleware لمراقبة الطلبات ---
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     logger.info(f"Request: {request.method} {request.url}")
