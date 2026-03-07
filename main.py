@@ -26,7 +26,16 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+if not SUPABASE_URL or not SUPABASE_KEY:
+    logger.error("خطأ: متغيرات Supabase غير مضبوطة!")
+    supabase = None
+else:
+    try:
+        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as e:
+        logger.error(f"فشل الاتصال بـ Supabase: {e}")
+        supabase = None
+
 
 @app.get("/")
 async def root():
