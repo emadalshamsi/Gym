@@ -54,23 +54,47 @@ def get_ai_nutrition_estimate(food_query):
 # --- 1. التغذية والماء والتمارين ---
 @app.post("/log_meal")
 async def log_meal(user_id: str = Query(...), meal_type: str = Query(...), items_ar: str = Form(...)):
-    meal_res = supabase.table("meals").insert({"user_id": user_id, "meal_type": meal_type}).execute()
-    meal_id = meal_res.data[0]['id']
-    nutri = get_ai_nutrition_estimate(items_ar)
-    payload = {"meal_id": meal_id, "food_name": items_ar, "calories": float(nutri['cal']), "protein": float(nutri['prot']), "carbs": float(nutri['carb']), "fat": float(nutri['fat']), "weight_grams": float(nutri['weight'])}
-    supabase.table("meal_items").insert(payload).execute()
-    return {"status": "success", "data": payload}
+    try:
+        meal_res = supabase.table("meals").insert({"user_id": user_id, "meal_type": meal_type}).execute()
+        if not meal_res.data:
+            return {"status": "error", "message": "Failed to create meal"}
+        meal_id = meal_res.data[0]['id']
+        nutri = get_ai_nutrition_estimate(items_ar)
+        payload = {"meal_id": meal_id, "food_name": items_ar, "calories": float(nutri['cal']), "protein": float(nutri['prot']), "carbs": float(nutri['carb']), "fat": float(nutri['fat']), "weight_grams": float(nutri['weight'])}
+        supabase.table("meal_items").insert(payload).execute()
+        return {"status": "success", "data": payload}
+    except Exception as e:
+        logger.error(f"Error in log_meal: {e}")
+        return {"status": "error", "message": str(e)}
+
 
 @app.get("/get_daily_intake")
 async def get_daily_intake(user_id: str = Query(...)):
-    profile = supabase.table("profiles").select("*").eq("id", user_id).single().execute()
-    targets = {"cal": profile.data.get("target_calories", 2000), "prot": 165.0, "fat": 55.0, "carb": 113.0}
-    today = datetime.now().strftime("%Y-%m-%d")
-    meals = supabase.table("meals").select("id").eq("user_id", user_id).gte("created_at", today).execute()
-    meal_ids = [m['id'] for m in meals.data]
-    items = supabase.table("meal_items").select("*").in_("meal_id", meal_ids).execute()
-    totals = {"cal": sum(i['calories'] for i in items.data), "prot": sum(i['protein'] for i in items.data), "fat": sum(i['fat'] for i in items.data), "carb": sum(i['carbs'] for i in items.data)}
-    return {"totals": totals, "targets": targets}
+    try:
+        profile_res = supabase.table("profiles").select("*").eq("id", user_id).execute()
+        profile_data = profile_res.data[0] if profile_res.data else {}
+        
+        targets = {"cal": profile_data.get("target_calories", 2000), "prot": 165.0, "fat": 55.0, "carb": 113.0}
+        today = datetime.now().strftime("%Y-%m-%d")
+        
+        meals = supabase.table("meals").select("id").eq("user_id", user_id).gte("created_at", today).execute()
+        meal_ids = [m['id'] for m in meals.data]
+        
+        if not meal_ids:
+            return {"totals": {"cal": 0, "prot": 0, "fat": 0, "carb": 0}, "targets": targets}
+
+        items = supabase.table("meal_items").select("*").in_("meal_id", meal_ids).execute()
+        totals = {
+            "cal": sum(i.get('calories', 0) for i in items.data), 
+            "prot": sum(i.get('protein', 0) for i in items.data), 
+            "fat": sum(i.get('fat', 0) for i in items.data), 
+            "carb": sum(i.get('carbs', 0) for i in items.data)
+        }
+        return {"totals": totals, "targets": targets}
+    except Exception as e:
+        logger.error(f"Error in get_daily_intake: {e}")
+        return {"totals": {"cal": 0, "prot": 0, "fat": 0, "carb": 0}, "targets": {"cal": 2000, "prot": 165.0, "fat": 55.0, "carb": 113.0}, "error": str(e)}
+
 
 @app.post("/log_water")
 async def log_water(user_id: str = Query(...), amount_ml: int = Query(...)):
@@ -104,20 +128,28 @@ async def upload_profile_pic(user_id: str = Query(...), file: UploadFile = File(
 # --- 4. النتيجة الإجمالية (Dashboard Score) ---
 @app.get("/get_overall_score")
 async def get_overall_score(user_id: str = Query(...)):
-    today = datetime.now().strftime("%Y-%m-%d")
-    # تغذية (40%) + ماء (20%) + تمارين (20%) + مهام (20%)
-    intake = await get_daily_intake(user_id)
-    score = min((intake['totals']['cal'] / intake['targets']['cal']) * 40, 40) if intake['targets']['cal'] > 0 else 0
-    
-    water_res = supabase.table("water_logs").select("amount_ml").eq("user_id", user_id).gte("created_at", today).execute()
-    score += min((sum(w['amount_ml'] for w in water_res.data) / 2500) * 20, 20)
-    
-    work_res = supabase.table("workouts").select("duration_min").eq("user_id", user_id).gte("created_at", today).execute()
-    score += min((sum(w['duration_min'] for w in work_res.data) / 45) * 20, 20)
-    
-    task_res = supabase.table("tasks").select("*").eq("user_id", user_id).gte("created_at", today).execute()
-    if task_res.data:
-        done = len([t for t in task_res.data if t['is_completed']])
-        score += (done / len(task_res.data)) * 20
-
-    return {"score": int(score), "display": f"{int(score)}/100"}
+    try:
+        today = datetime.now().strftime("%Y-%m-%d")
+        data = await get_daily_intake(user_id)
+        
+        # Calculate scores
+        cal_target = data['targets']['cal']
+        nutrition_score = min((data['totals']['cal'] / cal_target) * 40, 40) if cal_target > 0 else 0
+        
+        water_res = supabase.table("water_logs").select("amount_ml").eq("user_id", user_id).gte("created_at", today).execute()
+        water_score = min((sum(w['amount_ml'] for w in water_res.data) / 2500) * 20, 20)
+        
+        work_res = supabase.table("workouts").select("duration_min").eq("user_id", user_id).gte("created_at", today).execute()
+        workout_score = min((sum(w['duration_min'] for w in work_res.data) / 45) * 20, 20)
+        
+        task_res = supabase.table("tasks").select("*").eq("user_id", user_id).gte("created_at", today).execute()
+        task_score = 0
+        if task_res.data:
+            done = len([t for t in task_res.data if t['is_completed']])
+            task_score = (done / len(task_res.data)) * 20
+            
+        total_score = int(nutrition_score + water_score + workout_score + task_score)
+        return {"score": total_score, "display": f"{total_score}/100"}
+    except Exception as e:
+        logger.error(f"Error in get_overall_score: {e}")
+        return {"score": 0, "display": "0/100", "error": str(e)}
