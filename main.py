@@ -37,12 +37,14 @@ def get_ai_nutrition_estimate(food_query):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
     prompt = (
-        f"Analyze the nutritional content of: '{food_query}'. "
+        f"You are a professional nutrition expert. Analyze the nutritional content of the food mentioned: '{food_query}'. "
+        "The input might be in English or Arabic. Please translate even complex names correctly. "
         "Return ONLY a pure JSON object with these exact keys: "
         '{"cal": float, "prot": float, "carb": float, "fat": float, "weight": float}. '
-        "Be extremely accurate. If multiple items are mentioned, sum their values. "
-        "Do not include any Markdown or formatting, just the raw JSON."
+        "Be extremely accurate based on standard nutrition databases. If multiple items or quantities are mentioned (e.g., '4 boiled eggs'), calculate for the total amount."
+        "Do not include any Markdown, headers, or text, just the raw JSON object."
     )
+
     
     try:
         response = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=15)
