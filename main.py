@@ -30,50 +30,63 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # --- محرك التحليل الذكي ---
 def get_ai_nutrition_estimate(food_query):
     """تحليل النص واستخراج البيانات الغذائية عبر Gemini"""
+    debug_info = {
+        "key_found": bool(GEMINI_API_KEY),
+        "status_code": None,
+        "error": None,
+        "raw_text": None,
+        "raw_json": None
+    }
+    
     if not GEMINI_API_KEY:
         logger.error("خطأ: GEMINI_API_KEY غير مضبوط!")
-        return {"cal": 0, "prot": 0, "carb": 0, "fat": 0, "weight": 0}
+        return {"cal": 0, "prot": 0, "carb": 0, "fat": 0, "weight": 0}, debug_info
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
     prompt = (
-        f"You are a professional nutrition expert. Analyze the nutritional content of the food mentioned: '{food_query}'. "
-        "The input might be in English or Arabic. Please translate even complex names correctly. "
+        f"Analyze the nutritional content of: '{food_query}'. "
         "Return ONLY a pure JSON object with these exact keys: "
         '{"cal": float, "prot": float, "carb": float, "fat": float, "weight": float}. '
-        "Be extremely accurate based on standard nutrition databases. If multiple items or quantities are mentioned (e.g., '4 boiled eggs'), calculate for the total amount."
-        "Do not include any Markdown, headers, or text, just the raw JSON object."
+        "Be extremely accurate. If multiple items are mentioned, sum their values. "
     )
-
     
     try:
         response = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=15)
-        response.raise_for_status()
-        res_data = response.json()
+        debug_info["status_code"] = response.statusCode if hasattr(response, 'statusCode') else response.status_code
         
+        if response.status_code != 200:
+            debug_info["error"] = response.text
+            return {"cal": 0, "prot": 0, "carb": 0, "fat": 0, "weight": 0}, debug_info
+
+        res_data = response.json()
         if 'candidates' not in res_data or not res_data['candidates']:
-            logger.error(f"Gemini API returned no candidates for '{food_query}': {res_data}")
-            return {"cal": 0, "prot": 0, "carb": 0, "fat": 0, "weight": 0}
+            debug_info["error"] = "No candidates returned (Safety filter?)"
+            debug_info["raw_json"] = res_data
+            return {"cal": 0, "prot": 0, "carb": 0, "fat": 0, "weight": 0}, debug_info
 
         raw_text = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
-        logger.info(f"Gemini raw response for '{food_query}': {raw_text}")
+        debug_info["raw_text"] = raw_text
         
-        # تنظيف النص لضمان استخراج الـ JSON فقط
         clean_json_match = re.search(r'(\{.*\})', raw_text, re.DOTALL)
         if clean_json_match:
-            return json.loads(clean_json_match.group(1))
+            data = json.loads(clean_json_match.group(1))
+            return data, debug_info
         else:
-            logger.error(f"Failed to find JSON in Gemini response: {raw_text}")
-            return {"cal": 0, "prot": 0, "carb": 0, "fat": 0, "weight": 0}
+            debug_info["error"] = "JSON not found in text"
+            return {"cal": 0, "prot": 0, "carb": 0, "fat": 0, "weight": 0}, debug_info
+            
     except Exception as e:
+        debug_info["error"] = str(e)
         logger.error(f"Gemini Error for '{food_query}': {e}")
-        return {"cal": 0, "prot": 0, "carb": 0, "fat": 0, "weight": 0}
+        return {"cal": 0, "prot": 0, "carb": 0, "fat": 0, "weight": 0}, debug_info
 
 @app.get("/test_gemini")
 async def test_gemini(query: str = "4 boiled eggs"):
-    """نقطة فحص لاختبار اتصال Gemini بشكل مباشر"""
-    res = get_ai_nutrition_estimate(query)
-    return {"query": query, "result": res}
+    """نقطة فحص لاختبار اتصال Gemini بشكل مباشر مع تفاصيل فنية"""
+    res, debug = get_ai_nutrition_estimate(query)
+    return {"query": query, "result": res, "debug": debug}
+
 
 
 # --- 1. تسجيل الوجبات (Log Meal) ---
@@ -84,7 +97,8 @@ async def log_meal(user_id: str = Query(...), meal_type: str = Query(...), items
     meal_id = meal_res.data[0]['id']
     
     # الحصول على التحليل من AI
-    nutri = get_ai_nutrition_estimate(items_ar)
+    nutri, _ = get_ai_nutrition_estimate(items_ar)
+
     
     # تخزين البيانات في جدول meal_items
     payload = {
