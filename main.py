@@ -30,27 +30,49 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # --- محرك التحليل الذكي ---
 def get_ai_nutrition_estimate(food_query):
     """تحليل النص واستخراج البيانات الغذائية عبر Gemini"""
+    if not GEMINI_API_KEY:
+        logger.error("خطأ: GEMINI_API_KEY غير مضبوط!")
+        return {"cal": 0, "prot": 0, "carb": 0, "fat": 0, "weight": 0}
+
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
     prompt = (
-        f"Analyze the food: '{food_query}'. "
-        "Return ONLY a JSON object with these keys: "
+        f"Analyze the nutritional content of: '{food_query}'. "
+        "Return ONLY a pure JSON object with these exact keys: "
         '{"cal": float, "prot": float, "carb": float, "fat": float, "weight": float}. '
-        "Be accurate and return only the JSON structure."
+        "Be extremely accurate. If multiple items are mentioned, sum their values. "
+        "Do not include any Markdown or formatting, just the raw JSON."
     )
     
     try:
-        response = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=10)
+        response = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=15)
+        response.raise_for_status()
         res_data = response.json()
-        raw_text = res_data['candidates'][0]['content']['parts'][0]['text']
+        
+        if 'candidates' not in res_data or not res_data['candidates']:
+            logger.error(f"Gemini API returned no candidates for '{food_query}': {res_data}")
+            return {"cal": 0, "prot": 0, "carb": 0, "fat": 0, "weight": 0}
+
+        raw_text = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
+        logger.info(f"Gemini raw response for '{food_query}': {raw_text}")
         
         # تنظيف النص لضمان استخراج الـ JSON فقط
-        clean_json = re.search(r'\{.*\}', raw_text, re.DOTALL).group()
-        return json.loads(clean_json)
+        clean_json_match = re.search(r'(\{.*\})', raw_text, re.DOTALL)
+        if clean_json_match:
+            return json.loads(clean_json_match.group(1))
+        else:
+            logger.error(f"Failed to find JSON in Gemini response: {raw_text}")
+            return {"cal": 0, "prot": 0, "carb": 0, "fat": 0, "weight": 0}
     except Exception as e:
         logger.error(f"Gemini Error for '{food_query}': {e}")
-        # إذا فشل التحليل، نرسل أصفاراً لنعرف أن هناك مشكلة في الـ API Key أو الاتصال
         return {"cal": 0, "prot": 0, "carb": 0, "fat": 0, "weight": 0}
+
+@app.get("/test_gemini")
+async def test_gemini(query: str = "4 boiled eggs"):
+    """نقطة فحص لاختبار اتصال Gemini بشكل مباشر"""
+    res = get_ai_nutrition_estimate(query)
+    return {"query": query, "result": res}
+
 
 # --- 1. تسجيل الوجبات (Log Meal) ---
 @app.post("/log_meal")
