@@ -1,185 +1,120 @@
 import os, requests, json, re, logging
 from fastapi import FastAPI, Form, Query, Request, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
 from dotenv import load_dotenv
 from datetime import datetime
-from fastapi.middleware.cors import CORSMiddleware
 
 # --- إعدادات المراقبة ---
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 load_dotenv()
-app = FastAPI(title="AI Fitness App Backend")
+app = FastAPI(title="Solean AI Fitness Backend")
 
+# تفعيل CORS لضمان اتصال Zapp بالسيرفر بدون قيود
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-if not SUPABASE_URL or not SUPABASE_KEY:
-    logger.error("خطأ: متغيرات Supabase غير مضبوطة!")
-    supabase = None
-else:
-    try:
-        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-    except Exception as e:
-        logger.error(f"فشل الاتصال بـ Supabase: {e}")
-        supabase = None
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-
-@app.get("/")
-async def root():
-    return {"status": "alive", "message": "Gym App Backend is running"}
-
-# --- Middleware لمراقبة الطلبات ---
-
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    logger.info(f"Request: {request.method} {request.url}")
-    response = await call_next(request)
-    return response
-
-# --- محرك Gemini AI للتغذية ---
+# --- محرك Gemini AI المطور ---
 def get_ai_nutrition_estimate(food_query):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-    prompt = f'Analyze: "{food_query}". Return ONLY JSON: {{"cal": calories, "prot": protein, "carb": carbs, "fat": fat, "weight": grams}}'
+    
+    # برومبت صارم لضمان الحصول على JSON فقط
+    prompt = (
+        f"Analyze the nutritional content of: '{food_query}'. "
+        "Return ONLY a JSON object with these exact keys: "
+        '{"cal": float, "prot": float, "carb": float, "fat": float, "weight": float}. '
+        "Do not include any text before or after the JSON."
+    )
+    
     try:
         response = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=10)
-        match = re.search(r'\{.*\}', response.json()['candidates'][0]['content']['parts'][0]['text'], re.DOTALL)
-        return json.loads(match.group()) if match else {"cal": 250, "prot": 15, "carb": 10, "fat": 15, "weight": 200}
-    except:
-        return {"cal": 250, "prot": 15, "carb": 10, "fat": 15, "weight": 200}
+        response_json = response.json()
+        raw_text = response_json['candidates'][0]['content']['parts'][0]['text']
+        
+        # تنظيف النص المستلم من Gemini (إزالة ```json وأي زوائد)
+        clean_json_match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+        if clean_json_match:
+            return json.loads(clean_json_match.group())
+        else:
+            raise ValueError("No valid JSON found in AI response")
+            
+    except Exception as e:
+        logger.error(f"AI Error for '{food_query}': {e}")
+        # نرجع أصفار بدلاً من 250 لنعرف أن هناك خلل في المفتاح أو التحليل
+        return {"cal": 0, "prot": 0, "carb": 0, "fat": 0, "weight": 0}
 
-# --- 1. التغذية والماء والتمارين ---
+# --- العمليات الأساسية ---
 @app.post("/log_meal")
 async def log_meal(user_id: str = Query(...), meal_type: str = Query(...), items_ar: str = Form(...)):
-    try:
-        meal_res = supabase.table("meals").insert({"user_id": user_id, "meal_type": meal_type}).execute()
-        if not meal_res.data:
-            return {"status": "error", "message": "Failed to create meal"}
-        meal_id = meal_res.data[0]['id']
-        nutri = get_ai_nutrition_estimate(items_ar)
-        payload = {"meal_id": meal_id, "food_name": items_ar, "calories": float(nutri['cal']), "protein": float(nutri['prot']), "carbs": float(nutri['carb']), "fat": float(nutri['fat']), "weight_grams": float(nutri['weight'])}
-        supabase.table("meal_items").insert(payload).execute()
-        return {"status": "success", "data": payload}
-    except Exception as e:
-        logger.error(f"Error in log_meal: {e}")
-        return {"status": "error", "message": str(e)}
-
+    # 1. تسجيل رأس الوجبة
+    meal_res = supabase.table("meals").insert({"user_id": user_id, "meal_type": meal_type}).execute()
+    meal_id = meal_res.data[0]['id']
+    
+    # 2. تحليل المحتوى عبر Gemini
+    nutri = get_ai_nutrition_estimate(items_ar)
+    
+    # 3. تخزين القيم الحقيقية في Supabase
+    payload = {
+        "meal_id": meal_id,
+        "food_name": items_ar,
+        "calories": float(nutri.get('cal', 0)),
+        "protein": float(nutri.get('prot', 0)),
+        "carbs": float(nutri.get('carb', 0)),
+        "fat": float(nutri.get('fat', 0)),
+        "weight_grams": float(nutri.get('weight', 0))
+    }
+    supabase.table("meal_items").insert(payload).execute()
+    return {"status": "success", "data": payload}
 
 @app.get("/get_daily_intake")
 async def get_daily_intake(user_id: str = Query(...)):
     try:
-        profile_res = supabase.table("profiles").select("*").eq("id", user_id).execute()
-        profile_data = profile_res.data[0] if profile_res.data else {}
+        # جلب أهداف المستخدم (أو قيم افتراضية)
+        profile = supabase.table("profiles").select("*").eq("id", user_id).maybe_single().execute()
+        target_cal = profile.data.get("target_calories", 2000) if profile.data else 2000
         
-        targets = {"cal": profile_data.get("target_calories", 2000), "prot": 165.0, "fat": 55.0, "carb": 113.0}
+        # جلب وجبات اليوم فقط
         today = datetime.now().strftime("%Y-%m-%d")
-        
         meals = supabase.table("meals").select("id").eq("user_id", user_id).gte("created_at", today).execute()
         meal_ids = [m['id'] for m in meals.data]
         
-        if not meal_ids:
-            return {"totals": {"cal": 0, "prot": 0, "fat": 0, "carb": 0}, "targets": targets}
-
         items = supabase.table("meal_items").select("*").in_("meal_id", meal_ids).execute()
+        
         totals = {
-            "cal": sum(i.get('calories', 0) for i in items.data), 
-            "prot": sum(i.get('protein', 0) for i in items.data), 
-            "fat": sum(i.get('fat', 0) for i in items.data), 
-            "carb": sum(i.get('carbs', 0) for i in items.data)
+            "cal": sum(i['calories'] for i in items.data),
+            "prot": sum(i['protein'] for i in items.data),
+            "fat": sum(i['fat'] for i in items.data),
+            "carb": sum(i['carbs'] for i in items.data)
         }
-        return {"totals": totals, "targets": targets}
+        return {"totals": totals, "targets": {"cal": target_cal, "prot": 165, "fat": 55, "carb": 113}}
     except Exception as e:
-        logger.error(f"Error in get_daily_intake: {e}")
-        return {"totals": {"cal": 0, "prot": 0, "fat": 0, "carb": 0}, "targets": {"cal": 2000, "prot": 165.0, "fat": 55.0, "carb": 113.0}, "error": str(e)}
+        logger.error(f"Intake Error: {e}")
+        return {"totals": {"cal": 0, "prot": 0, "fat": 0, "carb": 0}, "targets": {"cal": 2000}}
 
-
-@app.post("/log_water")
-async def log_water(user_id: str = Query(...), amount_ml: int = Query(...)):
-    try:
-        return supabase.table("water_logs").insert({"user_id": user_id, "amount_ml": amount_ml}).execute()
-    except Exception as e:
-        logger.error(f"Error in log_water: {e}")
-        return {"status": "error", "message": str(e)}
-
-@app.post("/log_workout")
-async def log_workout(user_id: str = Query(...), name: str = Form(...), mins: int = Form(...)):
-    try:
-        return supabase.table("workouts").insert({"user_id": user_id, "workout_name": name, "duration_min": mins}).execute()
-    except Exception as e:
-        logger.error(f"Error in log_workout: {e}")
-        return {"status": "error", "message": str(e)}
-
-
-# --- 2. المهام المجدولة (Scheduled Tasks) ---
-@app.post("/add_task")
-async def add_task(user_id: str = Query(...), task_name: str = Form(...)):
-    try:
-        return supabase.table("tasks").insert({"user_id": user_id, "task_name": task_name, "is_completed": False}).execute()
-    except Exception as e:
-        logger.error(f"Error in add_task: {e}")
-        return {"status": "error", "message": str(e)}
-
-@app.post("/complete_task")
-async def complete_task(task_id: int = Query(...)):
-    try:
-        return supabase.table("tasks").update({"is_completed": True}).eq("id", task_id).execute()
-    except Exception as e:
-        logger.error(f"Error in complete_task: {e}")
-        return {"status": "error", "message": str(e)}
-
-
-# --- 3. البروفايل والصور ---
-@app.post("/upload_profile_pic")
-async def upload_profile_pic(user_id: str = Query(...), file: UploadFile = File(...)):
-    try:
-        content = await file.read()
-        path = f"profiles/{user_id}.jpg"
-        supabase.storage.from_("avatars").upload(path, content, {"content-type": "image/jpeg"})
-        url = supabase.storage.from_("avatars").get_public_url(path)
-        supabase.table("profiles").update({"profile_pic_url": url}).eq("id", user_id).execute()
-        return {"url": url}
-    except Exception as e:
-        logger.error(f"Error in upload_profile_pic: {e}")
-        return {"status": "error", "message": str(e)}
-
-
-# --- 4. النتيجة الإجمالية (Dashboard Score) ---
 @app.get("/get_overall_score")
 async def get_overall_score(user_id: str = Query(...)):
-    try:
-        today = datetime.now().strftime("%Y-%m-%d")
-        data = await get_daily_intake(user_id)
-        
-        # Calculate scores
-        cal_target = data['targets']['cal']
-        nutrition_score = min((data['totals']['cal'] / cal_target) * 40, 40) if cal_target > 0 else 0
-        
-        water_res = supabase.table("water_logs").select("amount_ml").eq("user_id", user_id).gte("created_at", today).execute()
-        water_score = min((sum(w['amount_ml'] for w in water_res.data) / 2500) * 20, 20)
-        
-        work_res = supabase.table("workouts").select("duration_min").eq("user_id", user_id).gte("created_at", today).execute()
-        workout_score = min((sum(w['duration_min'] for w in work_res.data) / 45) * 20, 20)
-        
-        task_res = supabase.table("tasks").select("*").eq("user_id", user_id).gte("created_at", today).execute()
-        task_score = 0
-        if task_res.data:
-            done = len([t for t in task_res.data if t['is_completed']])
-            task_score = (done / len(task_res.data)) * 20
-            
-        total_score = int(nutrition_score + water_score + workout_score + task_score)
-        return {"score": total_score, "display": f"{total_score}/100"}
-    except Exception as e:
-        logger.error(f"Error in get_overall_score: {e}")
-        return {"score": 0, "display": "0/100", "error": str(e)}
+    # حساب السكور بناءً على السعرات (مثال بسيط: نسبة الإنجاز من الهدف)
+    data = await get_daily_intake(user_id)
+    current = data['totals']['cal']
+    target = data['targets']['cal']
+    
+    score = (current / target) * 100 if target > 0 else 0
+    return {"score": min(int(score), 100)}
+
+@app.post("/log_water")
+async def log_water(user_id: str = Query(...), amount_ml: str = Form(...)):
+    # تعديل بسيط لاستقبال Form data ليتوافق مع Flutter
+    return supabase.table("water_logs").insert({"user_id": user_id, "amount_ml": int(amount_ml)}).execute()
