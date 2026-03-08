@@ -107,32 +107,53 @@ async def get_daily_intake(user_id: str = Query(...)):
 
 @app.post("/log_water")
 async def log_water(user_id: str = Query(...), amount_ml: int = Query(...)):
-    return supabase.table("water_logs").insert({"user_id": user_id, "amount_ml": amount_ml}).execute()
+    try:
+        return supabase.table("water_logs").insert({"user_id": user_id, "amount_ml": amount_ml}).execute()
+    except Exception as e:
+        logger.error(f"Error in log_water: {e}")
+        return {"status": "error", "message": str(e)}
 
 @app.post("/log_workout")
 async def log_workout(user_id: str = Query(...), name: str = Form(...), mins: int = Form(...)):
-    return supabase.table("workouts").insert({"user_id": user_id, "workout_name": name, "duration_min": mins}).execute()
+    try:
+        return supabase.table("workouts").insert({"user_id": user_id, "workout_name": name, "duration_min": mins}).execute()
+    except Exception as e:
+        logger.error(f"Error in log_workout: {e}")
+        return {"status": "error", "message": str(e)}
+
 
 # --- 2. المهام المجدولة (Scheduled Tasks) ---
 @app.post("/add_task")
 async def add_task(user_id: str = Query(...), task_name: str = Form(...)):
-    """إضافة مهمة جديدة (مثلاً: جلسة يوجا)"""
-    return supabase.table("tasks").insert({"user_id": user_id, "task_name": task_name, "is_completed": False}).execute()
+    try:
+        return supabase.table("tasks").insert({"user_id": user_id, "task_name": task_name, "is_completed": False}).execute()
+    except Exception as e:
+        logger.error(f"Error in add_task: {e}")
+        return {"status": "error", "message": str(e)}
 
 @app.post("/complete_task")
 async def complete_task(task_id: int = Query(...)):
-    """تحديد المهمة كمكتملة"""
-    return supabase.table("tasks").update({"is_completed": True}).eq("id", task_id).execute()
+    try:
+        return supabase.table("tasks").update({"is_completed": True}).eq("id", task_id).execute()
+    except Exception as e:
+        logger.error(f"Error in complete_task: {e}")
+        return {"status": "error", "message": str(e)}
+
 
 # --- 3. البروفايل والصور ---
 @app.post("/upload_profile_pic")
 async def upload_profile_pic(user_id: str = Query(...), file: UploadFile = File(...)):
-    content = await file.read()
-    path = f"profiles/{user_id}.jpg"
-    supabase.storage.from_("avatars").upload(path, content, {"content-type": "image/jpeg"})
-    url = supabase.storage.from_("avatars").get_public_url(path)
-    supabase.table("profiles").update({"profile_pic_url": url}).eq("id", user_id).execute()
-    return {"url": url}
+    try:
+        content = await file.read()
+        path = f"profiles/{user_id}.jpg"
+        supabase.storage.from_("avatars").upload(path, content, {"content-type": "image/jpeg"})
+        url = supabase.storage.from_("avatars").get_public_url(path)
+        supabase.table("profiles").update({"profile_pic_url": url}).eq("id", user_id).execute()
+        return {"url": url}
+    except Exception as e:
+        logger.error(f"Error in upload_profile_pic: {e}")
+        return {"status": "error", "message": str(e)}
+
 
 # --- 4. النتيجة الإجمالية (Dashboard Score) ---
 @app.get("/get_overall_score")
