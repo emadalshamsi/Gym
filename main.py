@@ -30,7 +30,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # --- محرك التحليل الذكي ---
 def get_ai_nutrition_estimate(food_query):
     """تحليل النص واستخراج البيانات الغذائية عبر Gemini"""
-    debug_info = {
+    debug_info: dict = {
         "key_found": bool(GEMINI_API_KEY),
         "status_code": None,
         "error": None,
