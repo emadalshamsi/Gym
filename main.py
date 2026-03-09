@@ -42,7 +42,7 @@ def get_ai_nutrition_estimate(food_query):
         logger.error("خطأ: GEMINI_API_KEY غير مضبوط!")
         return {"cal": 0, "prot": 0, "carb": 0, "fat": 0, "weight": 0}, debug_info
 
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
     
     prompt = (
         f"Analyze the nutritional content of: '{food_query}'. "
@@ -86,6 +86,20 @@ async def test_gemini(query: str = "4 boiled eggs"):
     """نقطة فحص لاختبار اتصال Gemini بشكل مباشر مع تفاصيل فنية"""
     res, debug = get_ai_nutrition_estimate(query)
     return {"query": query, "result": res, "debug": debug}
+
+@app.get("/list_models")
+async def list_models():
+    """قائمة الموديلات المتاحة لهذا المفتاح للتأكد من المسميات"""
+    if not GEMINI_API_KEY:
+        return {"error": "API Key missing"}
+    
+    url = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
+    try:
+        response = requests.get(url)
+        return response.json()
+    except Exception as e:
+        return {"error": str(e)}
+
 
 
 
