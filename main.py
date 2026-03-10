@@ -153,58 +153,61 @@ async def log_meal(user_id: str = Query(...), meal_type: str = Query(...), items
 # --- 2. جلب البيانات اليومية (Daily Intake) ---
 @app.get("/get_daily_intake")
 async def get_daily_intake(user_id: str = Query(...), date: str = Query(None)):
-    # إذا لم يرسل المستخدم تاريخاً، نستخدم تاريخ اليوم
-    target_date = date if date else datetime.now().strftime("%Y-%m-%d")
-    logger.info(f"Fetching daily data for {user_id} on {target_date}")
-    
-    # جلب أهداف المستخدم من جدول profiles
-    profile = {}
     try:
-        prof_res = supabase.table("profiles").select("*").eq("id", user_id).execute()
-        if prof_res.data:
-            profile = prof_res.data[0]
+        # إذا لم يرسل المستخدم تاريخاً، نستخدم تاريخ اليوم
+        target_date = date if date else datetime.now().strftime("%Y-%m-%d")
+        logger.info(f"Fetching daily data for {user_id} on {target_date}")
+        
+        # جلب أهداف المستخدم من جدول profiles
+        profile = {}
+        try:
+            prof_res = supabase.table("profiles").select("*").eq("id", user_id).execute()
+            if prof_res.data:
+                profile = prof_res.data[0]
+        except Exception as e:
+            logger.error(f"Supabase Profile Error: {e}")
+
+        targets = {
+            "cal": profile.get("daily_calorie_target", 2000),
+            "prot": profile.get("daily_protein_target", 150),
+            "carb": profile.get("daily_carb_target", 250),
+            "fat": profile.get("daily_fat_target", 70),
+            "water": 2000 
+        }
+        
+        try:
+            current_dt = datetime.strptime(target_date, "%Y-%m-%d")
+            next_day = (current_dt + timedelta(days=1)).strftime("%Y-%m-%d")
+        except Exception as e:
+            logger.warning(f"Date Parse Warning: {e}")
+            next_day = target_date + " 23:59:59"
+
+        # جلب الوجبات
+        meals = supabase.table("meals").select("id").eq("user_id", user_id).gte("created_at", target_date).lt("created_at", next_day).execute()
+        meal_ids = [m['id'] for m in (meals.data if meals.data else [])]
+        
+        items_data = []
+        if meal_ids:
+            items_res = supabase.table("meal_items").select("*").in_("meal_id", meal_ids).execute()
+            items_data = items_res.data if items_res.data else []
+        
+        # جلب سجلات المياه
+        water_res = supabase.table("water_logs").select("amount_ml").eq("user_id", user_id).gte("created_at", target_date).lt("created_at", next_day).execute()
+        water_data = water_res.data if water_res.data else []
+        water_total = sum(w['amount_ml'] for w in water_data)
+        
+        totals = {
+            "cal": sum(i.get('calories', 0) for i in items_data),
+            "prot": sum(i.get('protein', 0) for i in items_data),
+            "carb": sum(i.get('carbs', 0) for i in items_data),
+            "fat": sum(i.get('fat', 0) for i in items_data),
+            "water": water_total
+        }
+        
+        return {"totals": totals, "targets": targets, "profile": profile}
     except Exception as e:
-        logger.error(f"Error fetching profile: {e}")
-
-    # أهداف افتراضية إذا لم يوجد ملف شخصي
-    targets = {
-        "cal": profile.get("daily_calorie_target", 2000),
-        "prot": profile.get("daily_protein_target", 150),
-        "carb": profile.get("daily_carb_target", 250),
-        "fat": profile.get("daily_fat_target", 70),
-        "water": 2000 # Default target
-    }
-    
-    # جلب الوجبات المسجلة في التاريخ المحدد
-    # نحسب اليوم القادم لضمان جلب كل شيء حتى نهاية اليوم المختار
-    try:
-        current_dt = datetime.strptime(target_date, "%Y-%m-%d")
-        next_day = (current_dt + timedelta(days=1)).strftime("%Y-%m-%d")
-    except:
-        next_day = target_date + " 23:59:59"
-
-    meals = supabase.table("meals").select("id").eq("user_id", user_id).gte("created_at", target_date).lt("created_at", next_day).execute()
-    meal_ids = [m['id'] for m in meals.data]
-    
-    # جلب تفاصيل العناصر وحساب المجاميع
-    items = []
-    if meal_ids:
-        items = supabase.table("meal_items").select("*").in_("meal_id", meal_ids).execute()
-    
-    # جلب سجلات المياه للتاريخ المحدد
-    water_logs = supabase.table("water_logs").select("amount_ml").eq("user_id", user_id).gte("created_at", target_date).lt("created_at", next_day).execute()
-    water_total = sum(w['amount_ml'] for w in water_logs.data)
-    logger.info(f"Found {len(water_logs.data)} water logs for {target_date}. Total: {water_total}ml")
-    
-    totals = {
-        "cal": sum(i['calories'] for i in items.data) if hasattr(items, 'data') else 0,
-        "prot": sum(i['protein'] for i in items.data) if hasattr(items, 'data') else 0,
-        "carb": sum(i['carbs'] for i in items.data) if hasattr(items, 'data') else 0,
-        "fat": sum(i['fat'] for i in items.data) if hasattr(items, 'data') else 0,
-        "water": water_total
-    }
-    
-    return {"totals": totals, "targets": targets, "profile": profile}
+        logger.error(f"Global Intake Error: {str(e)}")
+        return {"error": str(e), "status": "failed"}
 
 @app.get("/get_profile")
 async def get_profile(user_id: str = Query(...)):
