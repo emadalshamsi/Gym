@@ -66,12 +66,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final dateStr = DateFormat('yyyy-MM-dd').format(targetDate);
     final url = "$baseUrl/get_daily_intake?user_id=$userId&date=$dateStr";
     
+    debugPrint("Attempting fetch from: $url");
+
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
-          selectedDate = targetDate; // ترسيخ التاريخ المختار
+          selectedDate = targetDate;
           
           final Map? newTotals = data['totals'] as Map?;
           final Map? newTargets = data['targets'] as Map?;
@@ -100,13 +102,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
           dailyScore = (((calP + waterP) / 2) * 100).toInt().clamp(0, 100);
         });
       } else {
-        _showError("Server Error: ${response.statusCode}\nURL: $url");
+        _showError("Server Error ${response.statusCode}: ${response.reasonPhrase}\nURL: $url");
       }
     } catch (e) {
-      debugPrint("Fetch error: $e");
-      _showError("Connection Error: $e\nCheck if your Render URL is correct: $baseUrl");
+      debugPrint("Fetch error details: $e");
+      String errorMsg = "XMLHttpRequest / Connection Error.\n";
+      if (e.toString().contains("XMLHttpRequest")) {
+        errorMsg += "CORS or Backend URL issue.\n";
+      }
+      _showError("$errorMsg\nURL: $url");
     } finally {
       setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _testConnection() async {
+    final url = "$baseUrl/health";
+    _showSuccess("Testing connection to: $url");
+    try {
+      final res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 5));
+      if (res.statusCode == 200) {
+        _showSuccess("Connection Successful!\nServer: ${res.body}");
+        _fetchData();
+      } else {
+        _showError("Health check failed (${res.statusCode}). Check Render logs.");
+      }
+    } catch (e) {
+      _showError("Failed to reach server: $e\nURL: $url");
     }
   }
 
@@ -496,8 +518,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text("Diary", style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800)),
-        Text("Refresh", style: GoogleFonts.inter(color: Colors.grey[600], fontWeight: FontWeight.w600)),
+                Text("Diary", style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800)),
+        TextButton(
+          onPressed: _testConnection,
+          child: Text("Test Connect", style: GoogleFonts.inter(color: const Color(0xFF4A80F0), fontWeight: FontWeight.w600)),
+        ),
       ],
     );
   }

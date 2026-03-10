@@ -13,13 +13,19 @@ load_dotenv()
 app = FastAPI(title="Solean AI Fitness")
 
 # تفعيل CORS للسماح لـ Zapp بالاتصال (تجنب خطأ XMLHttpRequest)
+# ملاحظة: إذا كان allow_origins=["*"]، يجب أن تكون allow_credentials=False
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/health")
+async def health_check():
+    """نقطة فحص للتأكد من أن السيرفر يعمل"""
+    return {"status": "online", "time": datetime.now().isoformat()}
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
