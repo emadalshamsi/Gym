@@ -4,15 +4,15 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=2.18.2 <3.0.0' # متوافق تماماً مع Zapp (Dart 2.19.2)
+  sdk: '>=2.18.2 <3.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  http: 0.13.5 # الإصدار المطلوب لضمان التوافق مع SDK 2.19
+  http: ^0.13.5
   cupertino_icons: ^1.0.2
-  google_fonts: ^4.0.4 # متوافق مع Dart 2.19
-  intl: ^0.18.1 # متوافق مع Dart 2.19
+  google_fonts: ^4.0.4
+  intl: ^0.18.1
 
 dev_dependencies:
   flutter_test:

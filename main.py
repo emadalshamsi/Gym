@@ -3,7 +3,7 @@ from fastapi import FastAPI, Form, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # إعدادات التسجيل لمراقبة الأخطاء في Render
 logging.basicConfig(level=logging.INFO)
@@ -114,9 +114,16 @@ async def test_water(user_id: str = "6ec22654-069a-4ab1-8535-3ac66e0b5047"):
 
 # --- 1. تسجيل الوجبات (Log Meal) ---
 @app.post("/log_meal")
-async def log_meal(user_id: str = Query(...), meal_type: str = Query(...), items_ar: str = Form(...)):
-    # تسجيل الوجبة في جدول meals للحصول على ID
-    meal_res = supabase.table("meals").insert({"user_id": user_id, "meal_type": meal_type}).execute()
+async def log_meal(user_id: str = Query(...), meal_type: str = Query(...), items_ar: str = Form(...), date: str = Form(None)):
+    # إذا لم يرسل المستخدم تاريخاً، نستخدم الوقت الحالي
+    log_time = date if date else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # تسجيل الوجبة في جدول meals
+    meal_res = supabase.table("meals").insert({
+        "user_id": user_id, 
+        "meal_type": meal_type,
+        "created_at": log_time
+    }).execute()
     meal_id = meal_res.data[0]['id']
     
     # الحصول على التحليل من AI
@@ -131,15 +138,18 @@ async def log_meal(user_id: str = Query(...), meal_type: str = Query(...), items
         "protein": float(nutri.get('prot', 0)),
         "carbs": float(nutri.get('carb', 0)),
         "fat": float(nutri.get('fat', 0)),
-        "weight_grams": float(nutri.get('weight', 0))
+        "weight_grams": float(nutri.get('weight', 0)),
+        "created_at": log_time # دمج نفس التاريخ لتفصيل العناصر
     }
     supabase.table("meal_items").insert(payload).execute()
     return {"status": "success", "data": payload}
 
 # --- 2. جلب البيانات اليومية (Daily Intake) ---
 @app.get("/get_daily_intake")
-async def get_daily_intake(user_id: str = Query(...)):
-    today = datetime.now().strftime("%Y-%m-%d")
+async def get_daily_intake(user_id: str = Query(...), date: str = Query(None)):
+    # إذا لم يرسل المستخدم تاريخاً، نستخدم تاريخ اليوم
+    target_date = date if date else datetime.now().strftime("%Y-%m-%d")
+    logger.info(f"Fetching daily data for {user_id} on {target_date}")
     
     # جلب أهداف المستخدم من جدول profiles
     profile = {}
@@ -155,21 +165,37 @@ async def get_daily_intake(user_id: str = Query(...)):
         "cal": profile.get("daily_calorie_target", 2000),
         "prot": profile.get("daily_protein_target", 150),
         "carb": profile.get("daily_carb_target", 250),
-        "fat": profile.get("daily_fat_target", 70)
+        "fat": profile.get("daily_fat_target", 70),
+        "water": 2000 # Default target
     }
     
-    # جلب الوجبات المسجلة اليوم
-    meals = supabase.table("meals").select("id").eq("user_id", user_id).gte("created_at", today).execute()
+    # جلب الوجبات المسجلة في التاريخ المحدد
+    # نحسب اليوم القادم لضمان جلب كل شيء حتى نهاية اليوم المختار
+    try:
+        current_dt = datetime.strptime(target_date, "%Y-%m-%d")
+        next_day = (current_dt + timedelta(days=1)).strftime("%Y-%m-%d")
+    except:
+        next_day = target_date + " 23:59:59"
+
+    meals = supabase.table("meals").select("id").eq("user_id", user_id).gte("created_at", target_date).lt("created_at", next_day).execute()
     meal_ids = [m['id'] for m in meals.data]
     
     # جلب تفاصيل العناصر وحساب المجاميع
-    items = supabase.table("meal_items").select("*").in_("meal_id", meal_ids).execute()
+    items = []
+    if meal_ids:
+        items = supabase.table("meal_items").select("*").in_("meal_id", meal_ids).execute()
+    
+    # جلب سجلات المياه للتاريخ المحدد
+    water_logs = supabase.table("water_logs").select("amount_ml").eq("user_id", user_id).gte("created_at", target_date).lt("created_at", next_day).execute()
+    water_total = sum(w['amount_ml'] for w in water_logs.data)
+    logger.info(f"Found {len(water_logs.data)} water logs for {target_date}. Total: {water_total}ml")
     
     totals = {
-        "cal": sum(i['calories'] for i in items.data),
-        "prot": sum(i['protein'] for i in items.data),
-        "carb": sum(i['carbs'] for i in items.data),
-        "fat": sum(i['fat'] for i in items.data)
+        "cal": sum(i['calories'] for i in items.data) if hasattr(items, 'data') else 0,
+        "prot": sum(i['protein'] for i in items.data) if hasattr(items, 'data') else 0,
+        "carb": sum(i['carbs'] for i in items.data) if hasattr(items, 'data') else 0,
+        "fat": sum(i['fat'] for i in items.data) if hasattr(items, 'data') else 0,
+        "water": water_total
     }
     
     return {"totals": totals, "targets": targets, "profile": profile}
@@ -200,11 +226,16 @@ async def get_overall_score(user_id: str = Query(...)):
     return {"score": min(int(score_percentage), 100)}
 
 @app.post("/log_water")
-async def log_water(user_id: str = Query(...), amount_ml: str = Form(...)):
-    """تسجيل شرب المياه مع التحقق من صحة البيانات"""
-    logger.info(f"Log Water Request: user={user_id}, amount={amount_ml}")
+async def log_water(user_id: str = Query(...), amount_ml: str = Form(...), date: str = Form(None)):
+    """تسجيل شرب المياه مع التحقق من صحة البيانات وتحديد التاريخ"""
+    log_time = date if date else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logger.info(f"Log Water Request: user={user_id}, amount={amount_ml}, date={log_time}")
     try:
-        data = {"user_id": user_id, "amount_ml": int(amount_ml)}
+        data = {
+            "user_id": user_id, 
+            "amount_ml": int(amount_ml),
+            "created_at": log_time
+        }
         res = supabase.table("water_logs").insert(data).execute()
         logger.info(f"Water Log Success: {res.data}")
         return {"status": "success", "data": data}

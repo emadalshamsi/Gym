@@ -1,4 +1,4 @@
--- Create profiles table
+-- 1. Profiles Table (User Goals & Info)
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     full_name TEXT,
@@ -11,7 +11,37 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Note: In a real Supabase environment, you would run this in the SQL Editor.
--- I am providing this for reference and to ensure the backend logic matches.
+-- 2. Meals Table (The "Parent" entry for a meal)
+CREATE TABLE IF NOT EXISTS public.meals (
+    id BIGSERIAL PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    meal_type TEXT, -- e.g., 'Breakfast', 'Lunch', 'Dinner', 'Snack'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
 
--- Update get_daily_intake logic in main.py to use this table.
+-- 3. Meal Items Table (Detailed macros for each food item)
+CREATE TABLE IF NOT EXISTS public.meal_items (
+    id BIGSERIAL PRIMARY KEY,
+    meal_id BIGINT REFERENCES public.meals(id) ON DELETE CASCADE,
+    food_name TEXT,
+    calories FLOAT DEFAULT 0,
+    protein FLOAT DEFAULT 0,
+    carbs FLOAT DEFAULT 0,
+    fat FLOAT DEFAULT 0,
+    weight_grams FLOAT DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 4. Water Logs Table (Hydration tracking)
+CREATE TABLE IF NOT EXISTS public.water_logs (
+    id BIGSERIAL PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    amount_ml INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS (Row Level Security) - Optional but recommended for Supabase
+-- ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE public.meals ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE public.meal_items ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE public.water_logs ENABLE ROW LEVEL SECURITY;
