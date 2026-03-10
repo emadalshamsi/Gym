@@ -141,6 +141,23 @@ async def log_meal(user_id: str = Query(...), meal_type: str = Query(...), items
 async def get_daily_intake(user_id: str = Query(...)):
     today = datetime.now().strftime("%Y-%m-%d")
     
+    # جلب أهداف المستخدم من جدول profiles
+    profile = {}
+    try:
+        prof_res = supabase.table("profiles").select("*").eq("id", user_id).execute()
+        if prof_res.data:
+            profile = prof_res.data[0]
+    except Exception as e:
+        logger.error(f"Error fetching profile: {e}")
+
+    # أهداف افتراضية إذا لم يوجد ملف شخصي
+    targets = {
+        "cal": profile.get("daily_calorie_target", 2000),
+        "prot": profile.get("daily_protein_target", 150),
+        "carb": profile.get("daily_carb_target", 250),
+        "fat": profile.get("daily_fat_target", 70)
+    }
+    
     # جلب الوجبات المسجلة اليوم
     meals = supabase.table("meals").select("id").eq("user_id", user_id).gte("created_at", today).execute()
     meal_ids = [m['id'] for m in meals.data]
@@ -155,10 +172,18 @@ async def get_daily_intake(user_id: str = Query(...)):
         "fat": sum(i['fat'] for i in items.data)
     }
     
-    # أهداف افتراضية (يمكن جلبها مستقبلاً من جدول profiles)
-    targets = {"cal": 2000, "prot": 165, "carb": 250, "fat": 70}
-    
-    return {"totals": totals, "targets": targets}
+    return {"totals": totals, "targets": targets, "profile": profile}
+
+@app.get("/get_profile")
+async def get_profile(user_id: str = Query(...)):
+    """جلب بيانات الملف الشخصي"""
+    try:
+        res = supabase.table("profiles").select("*").eq("id", user_id).execute()
+        if res.data:
+            return {"status": "success", "data": res.data[0]}
+        return {"status": "error", "message": "Profile not found"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 # --- 3. حساب السكور الإجمالي (Overall Score) ---
 @app.get("/get_overall_score")
