@@ -100,6 +100,15 @@ async def list_models():
     except Exception as e:
         return {"error": str(e)}
 
+@app.get("/test_water")
+async def test_water(user_id: str = "6ec22654-069a-4ab1-8535-3ac66e0b5047"):
+    """اختبار سريع لاتصال جدول المياه"""
+    try:
+        res = supabase.table("water_logs").select("*").eq("user_id", user_id).limit(1).execute()
+        return {"status": "success", "data": res.data}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 
 
 
@@ -167,5 +176,13 @@ async def get_overall_score(user_id: str = Query(...)):
 
 @app.post("/log_water")
 async def log_water(user_id: str = Query(...), amount_ml: str = Form(...)):
-    # لاستقبال Form data ليتوافق مع Flutter
-    return supabase.table("water_logs").insert({"user_id": user_id, "amount_ml": int(amount_ml)}).execute()
+    """تسجيل شرب المياه مع التحقق من صحة البيانات"""
+    logger.info(f"Log Water Request: user={user_id}, amount={amount_ml}")
+    try:
+        data = {"user_id": user_id, "amount_ml": int(amount_ml)}
+        res = supabase.table("water_logs").insert(data).execute()
+        logger.info(f"Water Log Success: {res.data}")
+        return {"status": "success", "data": data}
+    except Exception as e:
+        logger.error(f"Water Log Error: {str(e)}")
+        return {"status": "error", "message": str(e)}
