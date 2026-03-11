@@ -70,6 +70,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     try {
       final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+      debugPrint("Response Status: ${response.statusCode}");
+      debugPrint("Response Body: ${response.body}");
+      
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
@@ -79,19 +82,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           final Map? newTargets = data['targets'] as Map?;
           
           if (newTotals != null) {
-            totals['cal'] = newTotals['cal'] ?? 0.0;
-            totals['prot'] = newTotals['prot'] ?? 0.0;
-            totals['carb'] = newTotals['carb'] ?? 0.0;
-            totals['fat'] = newTotals['fat'] ?? 0.0;
-            totals['water'] = newTotals['water'] ?? 0.0;
+            totals['cal'] = (newTotals['cal'] ?? 0).toDouble();
+            totals['prot'] = (newTotals['prot'] ?? 0).toDouble();
+            totals['carb'] = (newTotals['carb'] ?? 0).toDouble();
+            totals['fat'] = (newTotals['fat'] ?? 0).toDouble();
+            totals['water'] = (newTotals['water'] ?? 0).toDouble();
           }
 
           if (newTargets != null) {
-            targets['cal'] = newTargets['cal'] ?? 2000.0;
-            targets['prot'] = newTargets['prot'] ?? 150.0;
-            targets['carb'] = newTargets['carb'] ?? 250.0;
-            targets['fat'] = newTargets['fat'] ?? 70.0;
-            targets['water'] = newTargets['water'] ?? 2000.0;
+            targets['cal'] = (newTargets['cal'] ?? 2000).toDouble();
+            targets['prot'] = (newTargets['prot'] ?? 150).toDouble();
+            targets['carb'] = (newTargets['carb'] ?? 250).toDouble();
+            targets['fat'] = (newTargets['fat'] ?? 70).toDouble();
+            targets['water'] = (newTargets['water'] ?? 2000).toDouble();
           }
 
           profile = data['profile'] ?? profile;
@@ -100,6 +103,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           double waterP = (targets['water'] != null && targets['water'] > 0) ? (totals['water'] / targets['water']) : 0.0;
           
           dailyScore = (((calP + waterP) / 2) * 100).toInt().clamp(0, 100);
+          debugPrint("State Updated! dailyScore: $dailyScore");
         });
       } else {
         _showError("Server Error ${response.statusCode}: ${response.reasonPhrase}\nURL: $url");
