@@ -161,11 +161,15 @@ async def get_daily_intake(user_id: str = Query(...), date: str = Query(None)):
         # جلب أهداف المستخدم من جدول profiles
         profile = {}
         try:
+            logger.info(f"Supabase: Fetching profile for {user_id}")
             prof_res = supabase.table("profiles").select("*").eq("id", user_id).execute()
             if prof_res.data:
                 profile = prof_res.data[0]
+                logger.info("Supabase: Profile found")
+            else:
+                logger.warning("Supabase: Profile NOT found for this ID")
         except Exception as e:
-            logger.error(f"Supabase Profile Error: {e}")
+            logger.error(f"Supabase Profile Error: {str(e)}")
 
         targets = {
             "cal": profile.get("daily_calorie_target", 2000),
@@ -183,18 +187,33 @@ async def get_daily_intake(user_id: str = Query(...), date: str = Query(None)):
             next_day = target_date + " 23:59:59"
 
         # جلب الوجبات
-        meals = supabase.table("meals").select("id").eq("user_id", user_id).gte("created_at", target_date).lt("created_at", next_day).execute()
-        meal_ids = [m['id'] for m in (meals.data if meals.data else [])]
+        try:
+            logger.info("Supabase: Fetching meals")
+            meals = supabase.table("meals").select("id").eq("user_id", user_id).gte("created_at", target_date).lt("created_at", next_day).execute()
+            meal_ids = [m['id'] for m in (meals.data if meals.data else [])]
+            logger.info(f"Supabase: Found {len(meal_ids)} meals")
+        except Exception as e:
+            logger.error(f"Supabase Meals Error: {str(e)}")
+            meal_ids = []
         
         items_data = []
         if meal_ids:
-            items_res = supabase.table("meal_items").select("*").in_("meal_id", meal_ids).execute()
-            items_data = items_res.data if items_res.data else []
+            try:
+                items_res = supabase.table("meal_items").select("*").in_("meal_id", meal_ids).execute()
+                items_data = items_res.data if items_res.data else []
+            except Exception as e:
+                logger.error(f"Supabase MealItems Error: {str(e)}")
         
         # جلب سجلات المياه
-        water_res = supabase.table("water_logs").select("amount_ml").eq("user_id", user_id).gte("created_at", target_date).lt("created_at", next_day).execute()
-        water_data = water_res.data if water_res.data else []
-        water_total = sum(w['amount_ml'] for w in water_data)
+        try:
+            logger.info("Supabase: Fetching water logs")
+            water_res = supabase.table("water_logs").select("amount_ml").eq("user_id", user_id).gte("created_at", target_date).lt("created_at", next_day).execute()
+            water_data = water_res.data if water_res.data else []
+            water_total = sum(w['amount_ml'] for w in water_data)
+            logger.info(f"Supabase: Water total: {water_total}")
+        except Exception as e:
+            logger.error(f"Supabase Water Error: {str(e)}")
+            water_total = 0
         
         totals = {
             "cal": sum(i.get('calories', 0) for i in items_data),
