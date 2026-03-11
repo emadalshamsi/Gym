@@ -104,6 +104,34 @@ async def log_meal(user_id: str = Query(...), meal_type: str = Query(...), items
         logger.error(f"Log Meal Error: {e}")
         return {"status": "error", "message": str(e)}
 
+# --- 1b. حذف وجبة (Delete Meal Item) ---
+@app.delete("/delete_meal_item")
+async def delete_meal_item(item_id: str = Query(...)):
+    try:
+        supabase.table("meal_items").delete().eq("id", item_id).execute()
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Delete Error: {e}")
+        return {"status": "error", "message": str(e)}
+
+# --- 1c. تحديث وجبة (Update Meal Item) ---
+@app.post("/update_meal_item")
+async def update_meal_item(item_id: str = Query(...), new_food: str = Form(...)):
+    try:
+        nutri, _ = get_ai_nutrition_estimate(new_food)
+        supabase.table("meal_items").update({
+            "food_name": new_food,
+            "calories": float(nutri.get('cal', 0)),
+            "protein": float(nutri.get('prot', 0)),
+            "carbs": float(nutri.get('carb', 0)),
+            "fat": float(nutri.get('fat', 0)),
+            "weight_grams": float(nutri.get('weight', 0)),
+        }).eq("id", item_id).execute()
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Update Error: {e}")
+        return {"status": "error", "message": str(e)}
+
 # --- 2. تسجيل المياه (Log Water) ---
 @app.post("/log_water")
 async def log_water(user_id: str = Query(...), amount_ml: str = Form(...), date: str = Form(None)):
@@ -168,6 +196,7 @@ async def get_daily_intake(user_id: str = Query(...), date: str = Query(None)):
         # قائمة الوجبات المفصلة للعرض في الواجهة
         items_list = [
             {
+                "id": i.get("id", ""),
                 "food_name": i.get("food_name", ""),
                 "calories": i.get("calories") or 0,
                 "protein": i.get("protein") or 0,
