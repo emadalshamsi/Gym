@@ -165,6 +165,71 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  Future<void> _deleteMealItem(String itemId) async {
+    try {
+      await http.delete(Uri.parse("$baseUrl/delete_meal_item?item_id=$itemId"));
+      await _fetchData(selectedDate);
+      _showSuccess("Meal deleted!");
+    } catch (e) {
+      _showError("Failed to delete meal");
+    }
+  }
+
+  Future<void> _updateMealItem(String itemId, String newFood) async {
+    setState(() => isLoading = true);
+    try {
+      await http.post(
+        Uri.parse("$baseUrl/update_meal_item?item_id=$itemId"),
+        body: {"new_food": newFood},
+      );
+      await _fetchData(selectedDate);
+      _showSuccess("Meal updated!");
+    } catch (e) {
+      _showError("Failed to update meal");
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  void _showEditMealDialog(String itemId, String currentName) {
+    final TextEditingController c = TextEditingController(text: currentName);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text("Edit Meal", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: c,
+          decoration: InputDecoration(
+            hintText: "e.g. 3 boiled eggs",
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF4A80F0), width: 2),
+            ),
+          ),
+          maxLines: 2,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4A80F0),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              if (c.text.isNotEmpty) {
+                _updateMealItem(itemId, c.text);
+                Navigator.pop(ctx);
+              }
+            },
+            child: const Text("Update & Re-Analyse"),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _logWater(int amount) async {
     final dateStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(selectedDate);
     try {
@@ -223,12 +288,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     )
                   else
-                    ...loggedItems.map((item) => _buildDiaryItem(
-                      item['food_name'] ?? 'Unknown',
-                      "${(item['calories'] as num).round()} cal",
-                      "P ${(item['protein'] as num).round()}g  C ${(item['carbs'] as num).round()}g  F ${(item['fat'] as num).round()}g",
-                      Icons.restaurant_rounded,
-                    )).toList(),
+                    ...loggedItems.map((item) => _buildDiaryItem(item)).toList(),
                   const SizedBox(height: 120),
                 ],
               ),
@@ -546,31 +606,74 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildDiaryItem(String name, String cal, String macros, IconData icon) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: const Color(0xFFF0F4FF), borderRadius: BorderRadius.circular(15)),
-            child: Icon(icon, color: const Color(0xFF4A80F0), size: 26),
+  Widget _buildDiaryItem(Map item) {
+    final String rawId = item['id']?.toString() ?? '';
+    final String itemId = rawId.isEmpty ? UniqueKey().toString() : rawId;
+    
+    final String name = item['food_name'] ?? 'Unknown';
+    final int cal = (item['calories'] as num).round();
+    final int prot = (item['protein'] as num).round();
+    final int carbs = (item['carbs'] as num).round();
+    final int fat = (item['fat'] as num).round();
+
+    return Dismissible(
+      key: Key(itemId),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(color: Colors.red.shade400, borderRadius: BorderRadius.circular(20)),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 24),
+        child: const Icon(Icons.delete_rounded, color: Colors.white, size: 28),
+      ),
+      onDismissed: (_) => _deleteMealItem(itemId),
+      child: GestureDetector(
+        onLongPress: () => _showEditMealDialog(itemId, name),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: const Color(0xFFF0F4FF), borderRadius: BorderRadius.circular(13)),
+                child: const Icon(Icons.restaurant_rounded, color: Color(0xFF4A80F0), size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "$cal cal",
+                      style: GoogleFonts.inter(color: const Color(0xFF4A80F0), fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 2),
+                    RichText(
+                      text: TextSpan(
+                        style: GoogleFonts.inter(fontSize: 11),
+                        children: [
+                          TextSpan(text: "P ${prot}g  ", style: const TextStyle(color: Color(0xFFF39C12), fontWeight: FontWeight.w600)),
+                          TextSpan(text: "C ${carbs}g  ", style: const TextStyle(color: Color(0xFF4AC2A4), fontWeight: FontWeight.w600)),
+                          TextSpan(text: "F ${fat}g", style: const TextStyle(color: Color(0xFF8E44AD), fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_left_rounded, color: Colors.grey, size: 20),
+            ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 3),
-                Text(cal, style: GoogleFonts.inter(color: const Color(0xFF4A80F0), fontSize: 14, fontWeight: FontWeight.w600)),
-                Text(macros, style: GoogleFonts.inter(color: Colors.grey[400], fontSize: 12)),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
