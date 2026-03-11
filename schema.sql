@@ -1,4 +1,4 @@
--- 1. Profiles Table (User Goals & Info)
+-- 1. Profiles Table (Unified Goals & Info)
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     full_name TEXT,
@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     daily_protein_target INTEGER DEFAULT 150,
     daily_carb_target INTEGER DEFAULT 250,
     daily_fat_target INTEGER DEFAULT 70,
+    daily_water_target_ml INTEGER DEFAULT 2000,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -32,16 +33,10 @@ CREATE TABLE IF NOT EXISTS public.meal_items (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 4. Water Logs Table (Hydration tracking)
+-- 4. Water Logs Table (Hydration tracking - Separated from meals)
 CREATE TABLE IF NOT EXISTS public.water_logs (
     id BIGSERIAL PRIMARY KEY,
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
     amount_ml INTEGER NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
-
--- Enable RLS (Row Level Security) - Optional but recommended for Supabase
--- ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE public.meals ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE public.meal_items ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE public.water_logs ENABLE ROW LEVEL SECURITY;
