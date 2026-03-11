@@ -69,7 +69,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     debugPrint("Attempting fetch from: $url");
 
     try {
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 20));
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -110,6 +110,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _showError("Server Error ${response.statusCode}: ${response.reasonPhrase}");
       }
     } catch (e) {
+      debugPrint("Fetch error: $e");
       String errorMsg = "Connection Error.\n";
       _showError("$errorMsg");
     } finally {
