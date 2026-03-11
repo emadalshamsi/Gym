@@ -96,8 +96,7 @@ async def log_meal(user_id: str = Query(...), meal_type: str = Query(...), items
             "protein": float(nutri.get('prot', 0)),
             "carbs": float(nutri.get('carb', 0)),
             "fat": float(nutri.get('fat', 0)),
-            "weight_grams": float(nutri.get('weight', 0)),
-            "created_at": log_time
+            "weight_grams": float(nutri.get('weight', 0))
         }
         supabase.table("meal_items").insert(payload).execute()
         return {"status": "success", "data": payload}
