@@ -39,8 +39,8 @@ def get_ai_nutrition_estimate(food_query):
         logger.error("خطأ: GEMINI_API_KEY غير مضبوط!")
         return {"cal": 0, "prot": 0, "carb": 0, "fat": 0, "weight": 0}, {"error": "Key missing"}
 
-    # تصحيح إصدار الموديل إلى 1.5-flash المستقر
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    # استعادة نسخة الموديل التي كانت تعمل بشكل سليم
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
     
     prompt = (
         f"Analyze the nutritional content of: '{food_query}'. "
