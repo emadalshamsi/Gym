@@ -48,8 +48,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   DateTime selectedDate = DateTime.now();
   
   // Data State
-  Map totals = {"cal": 0, "prot": 0, "carb": 0, "fat": 0, "water": 0};
-  Map targets = {"cal": 2000, "prot": 150, "carb": 250, "fat": 70, "water": 2000};
+  Map totals = {"cal": 0.0, "prot": 0.0, "carb": 0.0, "fat": 0.0, "water": 0.0};
+  Map targets = {"cal": 2000.0, "prot": 150.0, "carb": 250.0, "fat": 70.0, "water": 2000.0};
   Map profile = {"full_name": "Emad Alshamsi"};
   int dailyScore = 0;
   bool isLoading = true;
@@ -69,52 +69,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
     debugPrint("Attempting fetch from: $url");
 
     try {
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
-      debugPrint("Response Status: ${response.statusCode}");
-      debugPrint("Response Body: ${response.body}");
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 20));
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
           selectedDate = targetDate;
           
+          // إرساء قيم افتراضية قبل التحديث لضمان عدم بقاء بيانات اليوم السابق
+          totals = {"cal": 0.0, "prot": 0.0, "carb": 0.0, "fat": 0.0, "water": 0.0};
+          targets = {"cal": 2000.0, "prot": 150.0, "carb": 250.0, "fat": 70.0, "water": 2000.0};
+
           final Map? newTotals = data['totals'] as Map?;
           final Map? newTargets = data['targets'] as Map?;
           
           if (newTotals != null) {
-            totals['cal'] = (newTotals['cal'] ?? 0).toDouble();
-            totals['prot'] = (newTotals['prot'] ?? 0).toDouble();
-            totals['carb'] = (newTotals['carb'] ?? 0).toDouble();
-            totals['fat'] = (newTotals['fat'] ?? 0).toDouble();
-            totals['water'] = (newTotals['water'] ?? 0).toDouble();
+            totals['cal'] = (newTotals['cal'] ?? 0.0).toDouble();
+            totals['prot'] = (newTotals['prot'] ?? 0.0).toDouble();
+            totals['carb'] = (newTotals['carb'] ?? 0.0).toDouble();
+            totals['fat'] = (newTotals['fat'] ?? 0.0).toDouble();
+            totals['water'] = (newTotals['water'] ?? 0.0).toDouble();
           }
 
           if (newTargets != null) {
-            targets['cal'] = (newTargets['cal'] ?? 2000).toDouble();
-            targets['prot'] = (newTargets['prot'] ?? 150).toDouble();
-            targets['carb'] = (newTargets['carb'] ?? 250).toDouble();
-            targets['fat'] = (newTargets['fat'] ?? 70).toDouble();
-            targets['water'] = (newTargets['water'] ?? 2000).toDouble();
+            targets['cal'] = (newTargets['cal'] ?? 2000.0).toDouble();
+            targets['prot'] = (newTargets['prot'] ?? 150.0).toDouble();
+            targets['carb'] = (newTargets['carb'] ?? 250.0).toDouble();
+            targets['fat'] = (newTargets['fat'] ?? 70.0).toDouble();
+            targets['water'] = (newTargets['water'] ?? 2000.0).toDouble();
           }
 
           profile = data['profile'] ?? profile;
           
-          double calP = (targets['cal'] != null && targets['cal'] > 0) ? (totals['cal'] / targets['cal']) : 0.0;
-          double waterP = (targets['water'] != null && targets['water'] > 0) ? (totals['water'] / targets['water']) : 0.0;
+          double calP = targets['cal'] > 0 ? (totals['cal'] / targets['cal']) : 0.0;
+          double waterP = targets['water'] > 0 ? (totals['water'] / targets['water']) : 0.0;
           
           dailyScore = (((calP + waterP) / 2) * 100).toInt().clamp(0, 100);
-          debugPrint("State Updated! dailyScore: $dailyScore");
         });
       } else {
-        _showError("Server Error ${response.statusCode}: ${response.reasonPhrase}\nURL: $url");
+        _showError("Server Error ${response.statusCode}: ${response.reasonPhrase}");
       }
     } catch (e) {
-      debugPrint("Fetch error details: $e");
-      String errorMsg = "XMLHttpRequest / Connection Error.\n";
-      if (e.toString().contains("XMLHttpRequest")) {
-        errorMsg += "CORS or Backend URL issue.\n";
-      }
-      _showError("$errorMsg\nURL: $url");
+      String errorMsg = "Connection Error.\n";
+      _showError("$errorMsg");
     } finally {
       setState(() => isLoading = false);
     }
