@@ -158,14 +158,26 @@ async def get_daily_intake(user_id: str = Query(...), date: str = Query(None)):
         water_total = sum(w['amount_ml'] for w in water_data)
         
         totals = {
-            "cal": sum(i.get('calories', 0) for i in items_data),
-            "prot": sum(i.get('protein', 0) for i in items_data),
-            "carb": sum(i.get('carbs', 0) for i in items_data),
-            "fat": sum(i.get('fat', 0) for i in items_data),
+            "cal": sum((i.get('calories') or 0) for i in items_data),
+            "prot": sum((i.get('protein') or 0) for i in items_data),
+            "carb": sum((i.get('carbs') or 0) for i in items_data),
+            "fat": sum((i.get('fat') or 0) for i in items_data),
             "water": water_total
         }
-        
-        return {"totals": totals, "targets": targets, "profile": profile}
+
+        # قائمة الوجبات المفصلة للعرض في الواجهة
+        items_list = [
+            {
+                "food_name": i.get("food_name", ""),
+                "calories": i.get("calories") or 0,
+                "protein": i.get("protein") or 0,
+                "carbs": i.get("carbs") or 0,
+                "fat": i.get("fat") or 0,
+            }
+            for i in items_data if (i.get("calories") or 0) > 0
+        ]
+
+        return {"totals": totals, "targets": targets, "profile": profile, "items": items_list}
     except Exception as e:
         logger.error(f"Global Intake Error: {str(e)}")
         return {"error": str(e), "status": "failed"}

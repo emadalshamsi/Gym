@@ -51,6 +51,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map totals = {"cal": 0.0, "prot": 0.0, "carb": 0.0, "fat": 0.0, "water": 0.0};
   Map targets = {"cal": 2000.0, "prot": 150.0, "carb": 250.0, "fat": 70.0, "water": 2000.0};
   Map profile = {"full_name": "Emad Alshamsi"};
+  List<Map> loggedItems = [];
   int dailyScore = 0;
   bool isLoading = true;
 
@@ -82,6 +83,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
           final Map? newTotals = data['totals'] as Map?;
           final Map? newTargets = data['targets'] as Map?;
+          final List? newItems = data['items'] as List?;
           
           if (newTotals != null) {
             totals['cal'] = (newTotals['cal'] ?? 0.0).toDouble();
@@ -100,6 +102,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }
 
           profile = data['profile'] ?? profile;
+          loggedItems = newItems?.map((e) => Map<String, dynamic>.from(e)).toList() ?? [];
           
           double calP = targets['cal'] > 0 ? (totals['cal'] / targets['cal']) : 0.0;
           double waterP = targets['water'] > 0 ? (totals['water'] / targets['water']) : 0.0;
@@ -134,10 +137,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _logMealWithAI(String query) async {
+  Future<void> _logMealWithAI(String query, String mealType) async {
     setState(() => isLoading = true);
     final dateStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(selectedDate);
-    final url = "$baseUrl/log_meal?user_id=$userId&meal_type=Lunch";
+    final url = "$baseUrl/log_meal?user_id=$userId&meal_type=$mealType";
     
     try {
       final response = await http.post(
@@ -211,7 +214,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 30),
                   _buildDiaryHeader(),
                   const SizedBox(height: 15),
-                  _buildDiaryItem("Log Summary", "Latest AI-Parsed Items", "${totals['cal']} cal", "C ${totals['carb']}g  F ${totals['fat']}g  P ${totals['prot']}g", Icons.auto_awesome),
+                  if (loggedItems.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        child: Text("No meals logged today", style: GoogleFonts.inter(color: Colors.grey[400], fontSize: 14)),
+                      ),
+                    )
+                  else
+                    ...loggedItems.map((item) => _buildDiaryItem(
+                      item['food_name'] ?? 'Unknown',
+                      "${(item['calories'] as num).round()} cal",
+                      "P ${(item['protein'] as num).round()}g  C ${(item['carbs'] as num).round()}g  F ${(item['fat'] as num).round()}g",
+                      Icons.restaurant_rounded,
+                    )).toList(),
                   const SizedBox(height: 120),
                 ],
               ),
@@ -529,7 +545,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildDiaryItem(String title, String subtitle, String cal, String details, IconData icon) {
+  Widget _buildDiaryItem(String name, String cal, String macros, IconData icon) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(18),
@@ -539,17 +555,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(color: const Color(0xFFF0F4FF), borderRadius: BorderRadius.circular(15)),
-            child: Icon(icon, color: const Color(0xFF4A80F0), size: 28),
+            child: Icon(icon, color: const Color(0xFF4A80F0), size: 26),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 17)),
-                const SizedBox(height: 2),
-                Text(subtitle, style: GoogleFonts.inter(color: Colors.grey[500], fontSize: 13)),
-                Text("$cal • $details", style: GoogleFonts.inter(color: Colors.grey[400], fontSize: 11)),
+                Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 3),
+                Text(cal, style: GoogleFonts.inter(color: const Color(0xFF4A80F0), fontSize: 14, fontWeight: FontWeight.w600)),
+                Text(macros, style: GoogleFonts.inter(color: Colors.grey[400], fontSize: 12)),
               ],
             ),
           ),
@@ -650,33 +666,88 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _showMealDialog() {
     final TextEditingController queryC = TextEditingController();
+    String selectedMealType = "Breakfast";
+    const mealTypes = ["Breakfast", "Lunch", "Dinner", "Snack"];
+    final mealIcons = {
+      "Breakfast": Icons.wb_sunny_rounded,
+      "Lunch": Icons.lunch_dining_rounded,
+      "Dinner": Icons.nightlight_round,
+      "Snack": Icons.cookie_rounded,
+    };
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text("AI Meal Analysis", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-        content: TextField(
-          controller: queryC, 
-          decoration: const InputDecoration(
-            labelText: "What did you eat?", 
-            hintText: "e.g. 2 eggs and a coffee",
-            border: OutlineInputBorder(),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text("AI Meal Analysis", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Meal Type", style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[600], fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F4FF),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF4A80F0).withOpacity(0.3)),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedMealType,
+                    isExpanded: true,
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF4A80F0)),
+                    items: mealTypes.map((type) => DropdownMenuItem(
+                      value: type,
+                      child: Row(
+                        children: [
+                          Icon(mealIcons[type], color: const Color(0xFF4A80F0), size: 18),
+                          const SizedBox(width: 10),
+                          Text(type, style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    )).toList(),
+                    onChanged: (val) => setDialogState(() => selectedMealType = val!),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text("What did you eat?", style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[600], fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: queryC,
+                decoration: InputDecoration(
+                  hintText: "e.g. 2 eggs and a coffee",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF4A80F0), width: 2),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+                maxLines: 2,
+              ),
+            ],
           ),
-          maxLines: 2,
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4A80F0),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () {
+                if (queryC.text.isNotEmpty) {
+                  _logMealWithAI(queryC.text, selectedMealType);
+                  Navigator.pop(ctx);
+                }
+              },
+              child: const Text("Analyse & Log"),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4A80F0), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            onPressed: () {
-              if (queryC.text.isNotEmpty) {
-                _logMealWithAI(queryC.text);
-                Navigator.pop(ctx);
-              }
-            },
-            child: const Text("Analyse & Log"),
-          ),
-        ],
       ),
     );
   }
