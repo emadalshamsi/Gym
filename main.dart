@@ -73,7 +73,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
       
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = json.decode(utf8.decode(response.bodyBytes));
         setState(() {
           selectedDate = targetDate;
           
@@ -152,8 +152,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
       
       if (response.statusCode == 200) {
-        await _fetchData(selectedDate); // تحديث البيانات لليوم المختار
-        _showSuccess("AI Analysed: $query");
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        await _fetchData(selectedDate);
+        _showSuccess("AI Analysed: ${data['data']?['food_name'] ?? query}");
       } else {
         _showError("AI Failed: ${response.statusCode}\nBody: ${response.body}");
       }
