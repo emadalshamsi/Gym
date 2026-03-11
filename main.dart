@@ -627,52 +627,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: const Icon(Icons.delete_rounded, color: Colors.white, size: 28),
       ),
       onDismissed: (_) => _deleteMealItem(itemId),
-      child: GestureDetector(
-        onLongPress: () => _showEditMealDialog(itemId, name),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: const Color(0xFFF0F4FF), borderRadius: BorderRadius.circular(13)),
-                child: const Icon(Icons.restaurant_rounded, color: Color(0xFF4A80F0), size: 22),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: const Color(0xFFF0F4FF), borderRadius: BorderRadius.circular(13)),
+              child: const Icon(Icons.restaurant_rounded, color: Color(0xFF4A80F0), size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "$cal cal",
+                    style: GoogleFonts.inter(color: const Color(0xFF4A80F0), fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 2),
+                  RichText(
+                    text: TextSpan(
+                      style: GoogleFonts.inter(fontSize: 11),
+                      children: [
+                        TextSpan(text: "P ${prot}g  ", style: const TextStyle(color: Color(0xFFF39C12), fontWeight: FontWeight.w600)),
+                        TextSpan(text: "C ${carbs}g  ", style: const TextStyle(color: Color(0xFF4AC2A4), fontWeight: FontWeight.w600)),
+                        TextSpan(text: "F ${fat}g", style: const TextStyle(color: Color(0xFF8E44AD), fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "$cal cal",
-                      style: GoogleFonts.inter(color: const Color(0xFF4A80F0), fontSize: 13, fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 2),
-                    RichText(
-                      text: TextSpan(
-                        style: GoogleFonts.inter(fontSize: 11),
-                        children: [
-                          TextSpan(text: "P ${prot}g  ", style: const TextStyle(color: Color(0xFFF39C12), fontWeight: FontWeight.w600)),
-                          TextSpan(text: "C ${carbs}g  ", style: const TextStyle(color: Color(0xFF4AC2A4), fontWeight: FontWeight.w600)),
-                          TextSpan(text: "F ${fat}g", style: const TextStyle(color: Color(0xFF8E44AD), fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_left_rounded, color: Colors.grey, size: 20),
-            ],
-          ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.edit_rounded, color: Color(0xFF4A80F0), size: 20),
+              onPressed: () => _showEditMealDialog(itemId, name),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+          ],
         ),
       ),
     );
