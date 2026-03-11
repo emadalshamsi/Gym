@@ -32,6 +32,12 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+@app.get("/test_gemini")
+async def test_gemini(query: str = "2 boiled eggs"):
+    """نقطة فحص لاختبار اتصال Gemini بشكل مباشر"""
+    res, debug = get_ai_nutrition_estimate(query)
+    return {"query": query, "result": res, "debug": debug}
+
 # --- محرك التحليل الذكي ---
 def get_ai_nutrition_estimate(food_query):
     """تحليل النص واستخراج البيانات الغذائية عبر Gemini"""
@@ -39,8 +45,8 @@ def get_ai_nutrition_estimate(food_query):
         logger.error("خطأ: GEMINI_API_KEY غير مضبوط!")
         return {"cal": 0, "prot": 0, "carb": 0, "fat": 0, "weight": 0}, {"error": "Key missing"}
 
-    # استعادة نسخة الموديل التي كانت تعمل بشكل سليم
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+    # استخدام gemini-1.5-flash لأنه النسخة الأكثر استقراراً وموثوقية
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
     prompt = (
         f"Analyze the nutritional content of: '{food_query}'. "
