@@ -54,6 +54,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   bool isMenuOpen = false;
   DateTime selectedDate = DateTime.now();
+  int _currentIndex = 0;
 
   // Data State
   Map<String, double> totals = {"cal": 0.0, "prot": 0.0, "carb": 0.0, "fat": 0.0, "water": 0.0};
@@ -81,7 +82,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body) as Map<String, dynamic>;
+        final data = json.decode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
         setState(() {
           selectedDate = targetDate;
 
@@ -669,7 +670,9 @@ Widget _buildWaterBottle(double progress) {
         FloatingActionButton(
           onPressed: () => setState(() => isMenuOpen = !isMenuOpen),
           backgroundColor: const Color(0xFF4A80F0),
-          child: Icon(isMenuOpen ? Icons.close : Icons.add, size: 30),
+          elevation: 4,
+          child: SvgPicture.asset(isMenuOpen ? 'assets/icons/delete.svg' : 'assets/icons/09_add.svg', 
+            width: 28, height: 28, color: Colors.white),
         ),
       ],
     );
@@ -761,26 +764,29 @@ Widget _buildWaterBottle(double progress) {
         builder: (context, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text("AI Meal Analysis", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButton<String>(
-                value: selectedMealType,
-                isExpanded: true,
-                items: mealTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                onChanged: (val) => setDialogState(() => selectedMealType = val!),
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: queryC, 
-                decoration: const InputDecoration(
-                  labelText: "What did you eat?", 
-                  hintText: "e.g. 2 eggs and a coffee",
-                  border: OutlineInputBorder(),
+          content: SizedBox(
+            width: 320,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButton<String>(
+                  value: selectedMealType,
+                  isExpanded: true,
+                  items: mealTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                  onChanged: (val) => setDialogState(() => selectedMealType = val!),
                 ),
-                maxLines: 2,
-              ),
-            ],
+                const SizedBox(height: 15),
+                TextField(
+                  controller: queryC, 
+                  decoration: const InputDecoration(
+                    labelText: "What did you eat?", 
+                    hintText: "e.g. 2 eggs and a coffee",
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
@@ -870,11 +876,11 @@ Widget _buildWaterBottle(double progress) {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: SvgPicture.asset('assets/icons/edit.svg', width: 18, height: 18, placeholderBuilder: (_) => Icon(Icons.edit, size: 18)),
+                        icon: SvgPicture.asset('assets/icons/edit.svg', width: 18, height: 18, color: Colors.grey[800], placeholderBuilder: (_) => Icon(Icons.edit, size: 18)),
                         onPressed: () => _showEditMealDialog(item['id'], item['food_name']),
                       ),
                       IconButton(
-                        icon: SvgPicture.asset('assets/icons/delete.svg', width: 18, height: 18, placeholderBuilder: (_) => Icon(Icons.delete, size: 18)),
+                        icon: SvgPicture.asset('assets/icons/delete.svg', width: 18, height: 18, color: Colors.grey[800], placeholderBuilder: (_) => Icon(Icons.delete, size: 18)),
                         onPressed: () => _deleteMealItem(item['id']),
                       ),
                     ],
@@ -948,29 +954,38 @@ Widget _buildWaterBottle(double progress) {
 
   Widget _buildBottomNav() {
     return BottomAppBar(
-      height: 75,
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 8,
+      color: Colors.white,
       elevation: 20,
+      height: 70,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildNavItem(Icons.home_rounded, "Today", true),
-          _buildNavItem(Icons.calendar_today_rounded, "Plan", false),
+          _buildNavItem("Today", 'assets/icons/07_home.svg', 0),
+          _buildNavItem("Plan", 'assets/icons/08_calender.svg', 1),
           const SizedBox(width: 48),
-          _buildNavItem(Icons.bar_chart_rounded, "Stats", false),
-          _buildNavItem(Icons.person_outline_rounded, "Profile", false),
+          _buildNavItem("Stats", 'assets/icons/03_fire.svg', 2),
+          _buildNavItem("Profile", 'assets/icons/04_protein.svg', 3),
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, bool active) {
-    return Column(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, color: active ? const Color(0xFF4A80F0) : Colors.grey[400], size: 28),
-      const SizedBox(height: 2),
-      Text(label, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: active ? const Color(0xFF4A80F0) : Colors.grey[400]!))
-    ]);
+  Widget _buildNavItem(String label, String iconPath, int index) {
+    bool isSel = _currentIndex == index;
+    Color color = isSel ? const Color(0xFF4A80F0) : Colors.grey[400]!;
+    return GestureDetector(
+      onTap: () => setState(() => _currentIndex = index),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SvgPicture.asset(iconPath, width: 24, height: 24, color: color),
+          const SizedBox(height: 4),
+          Text(label, style: GoogleFonts.inter(fontSize: 10, fontWeight: isSel ? FontWeight.bold : FontWeight.normal, color: color)),
+        ],
+      ),
+    );
   }
+
+  int _currentIndex = 0; // Ensure this is added to state if missing
 }
 
