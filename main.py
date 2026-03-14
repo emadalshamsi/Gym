@@ -177,7 +177,8 @@ async def get_daily_intake(user_id: str = Query(...), date: str = Query(None)):
         
         items_data = []
         if meal_ids:
-            items_res = supabase.table("meal_items").select("*").in_("meal_id", meal_ids).execute()
+            # Fetch meal items joined with their meal type
+            items_res = supabase.table("meal_items").select("*, meals(meal_type)").in_("meal_id", meal_ids).execute()
             items_data = items_res.data if items_res.data else []
         
         # جلب سجلات المياه
@@ -202,6 +203,7 @@ async def get_daily_intake(user_id: str = Query(...), date: str = Query(None)):
                 "protein": i.get("protein") or 0,
                 "carbs": i.get("carbs") or 0,
                 "fat": i.get("fat") or 0,
+                "meal_type": i.get("meals", {}).get("meal_type", "Snack") if i.get("meals") else "Snack"
             }
             for i in items_data if (i.get("calories") or 0) > 0
         ]

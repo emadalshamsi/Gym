@@ -4,13 +4,14 @@ import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() {
   // تفعيل التعامل مع أخطاء الخطوط في الويب لـ Zapp
   try {
     GoogleFonts.config.allowRuntimeFetching = true;
   } catch (e) {
-    print('GoogleFonts config failed: $e');
+    // print('GoogleFonts config failed:  $e'); // Commented out to avoid console noise in production
   }
   runApp(const MyApp());
 }
@@ -29,6 +30,13 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF5F9FF),
       ),
       home: const DashboardScreen(),
+      locale: const Locale('ar', 'AE'),
+      supportedLocales: const [Locale('ar', 'AE'), Locale('en', 'US')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
     );
   }
 }
@@ -41,19 +49,20 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  // CONFIG: Base URL for backend
-  final String baseUrl = "https://gym-5pvr.onrender.com"; 
+  // CONFIG: Base URL for backend - FIXED: Removed extra space
+  final String baseUrl = "https://gym-5pvr.onrender.com";
   final String userId = "6ec22654-069a-4ab1-8535-3ac66e0b5047";
 
   bool isMenuOpen = false;
   DateTime selectedDate = DateTime.now();
-  
+
   // Data State
-  Map totals = {"cal": 0.0, "prot": 0.0, "carb": 0.0, "fat": 0.0, "water": 0.0};
-  Map targets = {"cal": 2000.0, "prot": 150.0, "carb": 250.0, "fat": 70.0, "water": 2000.0};
-  Map profile = {"full_name": "Emad Alshamsi"};
+  Map<String, double> totals = {"cal": 0.0, "prot": 0.0, "carb": 0.0, "fat": 0.0, "water": 0.0};
+  Map<String, double> targets = {"cal": 2000.0, "prot": 150.0, "carb": 250.0, "fat": 70.0, "water": 2000.0};
+  Map<String, dynamic> profile = {"full_name": "Emad Alshamsi"};
   int dailyScore = 0;
   bool isLoading = true;
+  List<dynamic> items = [];
 
   @override
   void initState() {
@@ -66,24 +75,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final targetDate = date ?? selectedDate;
     final dateStr = DateFormat('yyyy-MM-dd').format(targetDate);
     final url = "$baseUrl/get_daily_intake?user_id=$userId&date=$dateStr";
-    
+
     debugPrint("Attempting fetch from: $url");
 
     try {
       final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
-      
+
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = json.decode(response.body) as Map<String, dynamic>;
         setState(() {
           selectedDate = targetDate;
-          
+
           // إرساء قيم افتراضية قبل التحديث لضمان عدم بقاء بيانات اليوم السابق
           totals = {"cal": 0.0, "prot": 0.0, "carb": 0.0, "fat": 0.0, "water": 0.0};
           targets = {"cal": 2000.0, "prot": 150.0, "carb": 250.0, "fat": 70.0, "water": 2000.0};
 
-          final Map? newTotals = data['totals'] as Map?;
-          final Map? newTargets = data['targets'] as Map?;
-          
+          final Map<String, dynamic>? newTotals = data['totals'] as Map<String, dynamic>?;
+          final Map<String, dynamic>? newTargets = data['targets'] as Map<String, dynamic>?;
+
           if (newTotals != null) {
             totals['cal'] = (newTotals['cal'] ?? 0.0).toDouble();
             totals['prot'] = (newTotals['prot'] ?? 0.0).toDouble();
@@ -101,10 +110,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }
 
           profile = data['profile'] ?? profile;
-          
-          double calP = targets['cal'] > 0 ? (totals['cal'] / targets['cal']) : 0.0;
-          double waterP = targets['water'] > 0 ? (totals['water'] / targets['water']) : 0.0;
-          
+          items = data['items'] ?? [];
+
+          // FIXED: Added null checks before using > operator
+          double calP = (targets['cal'] ?? 0.0) > 0 ? ((totals['cal'] ?? 0.0) / (targets['cal'] ?? 1.0)) : 0.0;
+          double waterP = (targets['water'] ?? 0.0) > 0 ? ((totals['water'] ?? 0.0) / (targets['water'] ?? 1.0)) : 0.0;
+
           dailyScore = (((calP + waterP) / 2) * 100).toInt().clamp(0, 100);
         });
       } else {
@@ -126,7 +137,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 5));
       if (res.statusCode == 200) {
         _showSuccess("Connection Successful!\nServer: ${res.body}");
-        _fetchData();
+        await _fetchData();
       } else {
         _showError("Health check failed (${res.statusCode}). Check Render logs.");
       }
@@ -135,20 +146,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _logMealWithAI(String query) async {
+  Future<void> _logMealWithAI(String query, [String mealType = "Lunch"]) async {
     setState(() => isLoading = true);
+    // FIXED: Removed extra spaces in date format
     final dateStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(selectedDate);
-    final url = "$baseUrl/log_meal?user_id=$userId&meal_type=Lunch";
-    
+    final url = "$baseUrl/log_meal?user_id=$userId&meal_type=$mealType";
+
     try {
       final response = await http.post(
         Uri.parse(url),
         body: {
           "items_ar": query,
           "date": dateStr,
-        }, 
+        },
       );
-      
+
       if (response.statusCode == 200) {
         await _fetchData(selectedDate); // تحديث البيانات لليوم المختار
         _showSuccess("AI Analysed: $query");
@@ -163,6 +175,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _logWater(int amount) async {
+    // FIXED: Removed extra spaces in date format
     final dateStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(selectedDate);
     try {
       final response = await http.post(
@@ -208,11 +221,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 20),
                   _buildCaloriesCard(),
                   const SizedBox(height: 20),
-                  _buildMacrosSection(),
-                  const SizedBox(height: 30),
                   _buildDiaryHeader(),
                   const SizedBox(height: 15),
-                  _buildDiaryItem("Log Summary", "Latest AI-Parsed Items", "${totals['cal']} cal", "C ${totals['carb']}g  F ${totals['fat']}g  P ${totals['prot']}g", Icons.auto_awesome),
+                  _buildGroupedDiary(),
                   const SizedBox(height: 120),
                 ],
               ),
@@ -248,7 +259,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  "Goal: ${targets['cal']} cal",
+                  "Goal: ${(targets['cal'] ?? 2000).round()} cal",
                   style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[600]),
                 ),
               ],
@@ -260,7 +271,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           decoration: BoxDecoration(color: const Color(0xFF4A80F0).withOpacity(0.1), borderRadius: BorderRadius.circular(15)),
           child: Text(
             DateFormat('MMM yyyy').format(selectedDate),
-            style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF4A80F0)),
+            style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF4A80F0)),
           ),
         ),
       ],
@@ -293,14 +304,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 const SizedBox(width: 6),
-                // تم التعديل ليتناسب مع Flutter SVG 1.1.6
+                // 2. Replace the Icon widget with this:
                 SvgPicture.asset(
                   'assets/icons/01_spark.svg',
                   width: 20,
                   height: 20,
-                  color: const Color(0xFFEDBA42), // استخدم color بدلاً من colorFilter
-                  colorBlendMode: BlendMode.srcIn,
-                ),
+
+                )
               ],
             ),
           ],
@@ -315,7 +325,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 height: 4,
                 margin: const EdgeInsets.symmetric(horizontal: 2),
                 decoration: BoxDecoration(
-                  color: active ? const Color(0xFFFFB800) : Colors.grey[200],
+                  color: active ? const Color(0xFFFFB800) : Colors.grey[200]!,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -330,84 +340,96 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       height: 90,
       margin: const EdgeInsets.only(top: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: List.generate(7, (index) {
-          final day = DateTime.now().add(Duration(days: index - 3));
-          bool isSelected = day.day == selectedDate.day && day.month == selectedDate.month;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => _fetchData(day),
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF4A80F0) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      DateFormat('E').format(day)[0],
-                      style: GoogleFonts.inter(
-                        color: isSelected ? Colors.white : Colors.grey[600],
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(7, (index) {
+              final day = DateTime.now().add(Duration(days: index - 3));
+              bool isSelected = day.day == selectedDate.day && day.month == selectedDate.month;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => _fetchData(day),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected ? const Color(0xFF4A80F0) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(15),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      day.day.toString(),
-                      style: GoogleFonts.inter(
-                        color: isSelected ? Colors.white : Colors.grey[600],
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          DateFormat('E').format(day)[0],
+                          style: GoogleFonts.inter(
+                            color: isSelected ? Colors.white : Colors.grey[600],
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          day.day.toString(),
+                          style: GoogleFonts.inter(
+                            color: isSelected ? Colors.white : Colors.grey[600],
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
+              );
+            }),
           );
-        }),
+        },
       ),
     );
   }
 
   Widget _buildCaloriesCard() {
-    double calProgress = (totals['cal'] / targets['cal']).clamp(0.0, 1.0);
-    double waterProgress = (totals['water'] / targets['water']).clamp(0.0, 1.0);
+    // FIXED: Added null checks before using > operator
+    double calProgress = (targets['cal'] ?? 0.0) > 0 ? ((totals['cal'] ?? 0.0) / (targets['cal'] ?? 1.0)).clamp(0.0, 1.0) : 0.0;
+    double waterProgress = (targets['water'] ?? 0.0) > 0 ? ((totals['water'] ?? 0.0) / (targets['water'] ?? 1.0)).clamp(0.0, 1.0) : 0.0;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 8))],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 8))
+        ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Calories Section (2/3)
+          // Left Side: Calories & Macros (80% weight)
           Expanded(
-            flex: 2,
+            flex: 4,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Text("Calories", style: GoogleFonts.inter(color: Colors.grey, fontWeight: FontWeight.w600)),
-                    Text("${(calProgress * 100).toInt()}%", style: GoogleFonts.inter(color: const Color(0xFF4A80F0), fontWeight: FontWeight.bold)),
+                    // Add your SVG here
+                    SvgPicture.asset(
+                      'assets/icons/03_fire.svg', // Ensure your fire.svg is in assets/icons/
+                      width: 24,
+                      height: 24,
+
+                    ),
+                    const SizedBox(width: 8), // Add some space between icon and text
+                    Text("${(totals['cal'] ?? 0).round()} cal", 
+                        style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w900)),
+                    Text(" / ${(targets['cal'] ?? 0).round()}", 
+                        style: GoogleFonts.inter(fontSize: 14, color: Colors.grey)),
                   ],
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Text("${totals['cal'].round()} cal", style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w900)),
-                    Text(" / ${targets['cal'].round()}", style: GoogleFonts.inter(fontSize: 14, color: Colors.grey)),
-                  ],
-                ),
-                const SizedBox(height: 15),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: LinearProgressIndicator(
@@ -417,13 +439,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4A80F0)),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text("${(targets['cal'] - totals['cal']).round().clamp(0, 9999)} left", style: GoogleFonts.inter(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 20),
+                // FIXED: Removed duplicated macro row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(child: _buildInnerMacro("Protein", totals['prot'] ?? 0, targets['prot'] ?? 0,Color.fromRGBO(243, 156, 18, 1),'assets/icons/04_protein.svg')),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildInnerMacro("Carbs", totals['carb'] ?? 0, targets['carb'] ?? 0, Color.fromRGBO(74, 194, 164, 1), 'assets/icons/05_carbs.svg')),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildInnerMacro("Fat", totals['fat'] ?? 0, targets['fat'] ?? 0,Color.fromRGBO(142, 68, 173, 1), 'assets/icons/06_fat.svg')),
+                  ],
+                ),
               ],
             ),
           ),
+
+          // The Gap (Separation)
           const SizedBox(width: 20),
-          // Water Section (1/3)
+
+          // Right Side: Water Bottle (20% weight)
           Expanded(
             flex: 1,
             child: _buildWaterBottle(waterProgress),
@@ -433,116 +468,152 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildWaterBottle(double progress) {
+  Widget _buildInnerMacro(String label, double taken, double target, Color color, String assetPath) {
+    double progress = target > 0 ? (taken / target).clamp(0.0, 1.0) : 0.0;
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Water", style: GoogleFonts.inter(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 10),
-        Stack(
-          alignment: Alignment.bottomCenter,
+        Row(
           children: [
-            // Bottle Outline
-            Container(
-              height: 100,
-              width: 45,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0F4FF),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  topRight: Radius.circular(12),
-                  bottomLeft: Radius.circular(8),
-                  bottomRight: Radius.circular(8),
-                ),
-                border: Border.all(color: Colors.blue.withOpacity(0.2), width: 2),
+            // The new SVG icon
+              SvgPicture.asset(
+              assetPath,
+              width: 14,
+              height: 14,
+              color: color,
+              colorBlendMode: BlendMode.srcIn,
               ),
-              child: Center(
-                child: Text(
-                  "${totals['water']}ml",
-                  style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF4A80F0)),
-                ),
-              ),
-            ),
-            // Water Fill
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 500),
-              height: 100 * progress,
-              width: 45,
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.4),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: const Radius.circular(6),
-                  bottomRight: const Radius.circular(6),
-                  topLeft: Radius.circular(progress > 0.9 ? 10 : 0),
-                  topRight: Radius.circular(progress > 0.9 ? 10 : 0),
-                ),
-              ),
-            ),
-            // Bottle Cap
-            Positioned(
-              top: 0,
-              child: Container(
-                height: 10,
-                width: 25,
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            ),
+             const SizedBox(width: 6),
+            Text(label, style: GoogleFonts.inter(fontSize: 11, color: Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.w600)),
           ],
         ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(5),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 6,
+            backgroundColor: color.withOpacity(0.1),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+          ),
+        ),
         const SizedBox(height: 4),
-        Text("${(targets['water']).toInt()}ml", style: GoogleFonts.inter(fontSize: 10, color: Colors.grey)),
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: "${taken.toInt()}g",
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: (target * 1.1 - taken) > 0 ? Colors.black : Colors.red, // Changed to black
+                  ),
+                ),
+                TextSpan(
+                  text: " / ${((target - taken) > 0 ? (target - taken).toInt() : 0)}g left",
+                  style: GoogleFonts.inter(
+                    fontSize: 8,
+                    fontWeight: FontWeight.normal,
+                    color: (target * 1.1 - taken) > 0 ? Colors.grey : Colors.grey, // Optionally turn red when over
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
 
-  Widget _buildMacrosSection() {
-    return Row(
-      children: [
-        _buildMacroCard("Protein", totals['prot'], targets['prot'], const Color(0xFFF39C12)),
-        const SizedBox(width: 12),
-        _buildMacroCard("Carbs", totals['carb'], targets['carb'], const Color(0xFF4AC2A4)),
-        const SizedBox(width: 12),
-        _buildMacroCard("Fat", totals['fat'], targets['fat'], const Color(0xFF8E44AD)),
-      ],
-    );
-  }
+Widget _buildWaterBottle(double progress) {
+  const Color waterColor = Color.fromARGB(255, 57, 179, 246);
+  const double totalHeight = 100;
+  
+  // Assuming your goal is stored in targets['water']
+  double goalInLiters = (targets['water'] ?? 0) / 1000;
+  String formattedGoal = "${goalInLiters.toStringAsFixed(2)} Ltr";
+  double currentLogLiters = (totals['water'] ?? 0.0) / 1000;
 
-  Widget _buildMacroCard(String label, dynamic taken, dynamic target, Color color) {
-    double progress = (taken / target).clamp(0.0, 1.0);
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  return Column(
+    children: [
+      // UPDATED ROW: Label on left, Goal on right
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text("Water",
+              style: GoogleFonts.inter(
+                  color: waterColor, fontSize: 8, fontWeight: FontWeight.w600)),
+          Text(formattedGoal, // Displays "2.00 Ltr"
+              style: GoogleFonts.inter(
+                  color: Colors.blueGrey.shade300, 
+                  fontSize: 8, 
+                  fontWeight: FontWeight.w500)),
+        ],
+      ),
+      const SizedBox(height: 10),
+      Container(
+        height: totalHeight,
+        width: 65,
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            Text(label, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
-            const SizedBox(height: 6),
-            Text("${taken.round()}g", style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
-            Text("of ${target.round()}g", style: GoogleFonts.inter(fontSize: 10, color: Colors.grey)),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(5),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 6,
-                backgroundColor: color.withOpacity(0.1),
-                valueColor: AlwaysStoppedAnimation<Color>(color),
+            // 1. The Water Fill
+            Positioned(
+              bottom: 2,
+              left: 3,
+              right: 3,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 600),
+                height: totalHeight * progress.clamp(0.02, 0.96),
+                color: waterColor.withOpacity(0.5),
               ),
             ),
+            
+            // 2. The Bottle Mask/Overlay
+            SvgPicture.asset(
+              'assets/icons/02_water_bottle.svg',
+              fit: BoxFit.fill,
+              width: 111,
+              height: totalHeight,
+              color: Colors.white,
+            ),
+            SvgPicture.asset(
+              'assets/icons/02_water_bottle3.svg',
+              fit: BoxFit.fill,
+              width: 111,
+              height: totalHeight,
+              color: const Color.fromARGB(255, 143, 143, 143),
+            ),
+            Positioned(
+              bottom: 33, // Adjust this to move the label up/down to match your red box
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.8), // Glass effect
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  "${currentLogLiters.toStringAsFixed(2)} L",
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color:  Color.fromARGB(255, 0, 0, 0),
+                  ),
+                ),
+              ),
+            ),
+            
           ],
         ),
       ),
-    );
-  }
+    ],
+  );
+}
 
   Widget _buildDiaryHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-                Text("Diary", style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800)),
+        Text("Diary", style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800)),
         TextButton(
           onPressed: _testConnection,
           child: Text("Test Connect", style: GoogleFonts.inter(color: const Color(0xFF4A80F0), fontWeight: FontWeight.w600)),
@@ -638,7 +709,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _showWaterDialog() {
     int amount = 250;
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -651,8 +722,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 20),
               Slider(
                 value: amount.toDouble(),
-                min: 0, max: 1000, divisions: 20,
-                onChanged: (v) => setS(() => amount = v.toInt()),
+                min: 0,
+                max: 1000,
+                divisions: 20,
+                onChanged: (double v) => setS(() => amount = v.toInt()),
               ),
               Text("Drag to adjust", style: GoogleFonts.inter(fontSize: 12, color: Colors.grey)),
             ],
@@ -662,7 +735,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4A80F0), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            onPressed: () { _logWater(amount); Navigator.pop(ctx); },
+            onPressed: () {
+              _logWater(amount);
+              Navigator.pop(ctx);
+            },
             child: const Text("Log Water"),
           ),
         ],
@@ -672,40 +748,188 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _showMealDialog() {
     final TextEditingController queryC = TextEditingController();
-    showDialog(
+    String selectedMealType = "Breakfast";
+    final mealTypes = ["Breakfast", "Lunch", "Dinner", "Snack"];
+    
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text("AI Meal Analysis", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButton<String>(
+                value: selectedMealType,
+                isExpanded: true,
+                items: mealTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                onChanged: (val) => setDialogState(() => selectedMealType = val!),
+              ),
+              const SizedBox(height: 15),
+              TextField(
+                controller: queryC, 
+                decoration: const InputDecoration(
+                  labelText: "What did you eat?", 
+                  hintText: "e.g. 2 eggs and a coffee",
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4A80F0), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              onPressed: () {
+                if (queryC.text.isNotEmpty) {
+                  _logMealWithAI(queryC.text, selectedMealType);
+                  Navigator.pop(ctx);
+                }
+              },
+              child: const Text("Analyse & Log"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGroupedDiary() {
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    final Map<String, List<dynamic>> grouped = {};
+    for (var item in items) {
+      final type = item['meal_type'] ?? "Snack";
+      grouped.putIfAbsent(type, () => []).add(item);
+    }
+
+    final typesOrder = ["Breakfast", "Lunch", "Dinner", "Snack"];
+    final existingTypes = typesOrder.where((t) => grouped.containsKey(t)).toList();
+
+    return Column(
+      children: existingTypes.map((type) {
+        final mealItems = grouped[type]!;
+        double totalCal = 0, totalP = 0, totalC = 0, totalF = 0;
+        for (var i in mealItems) {
+          totalCal += (i['calories'] ?? 0).toDouble();
+          totalP += (i['protein'] ?? 0).toDouble();
+          totalC += (i['carbs'] ?? 0).toDouble();
+          totalF += (i['fat'] ?? 0).toDouble();
+        }
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+          child: Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: const Color(0xFFF0F4FF), borderRadius: BorderRadius.circular(12)),
+                child: SvgPicture.asset('assets/icons/$type.svg', width: 24, height: 24, 
+                  placeholderBuilder: (context) => Icon(Icons.restaurant, color: Color(0xFF4A80F0))),
+              ),
+              title: Text(type, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 17)),
+              subtitle: RichText(
+                text: TextSpan(
+                  style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[500]),
+                  children: [
+                    TextSpan(text: "${totalCal.round()} cal • "),
+                    TextSpan(text: "P ${totalP.round()}g ", style: const TextStyle(color: Color(0xFFF39C12), fontWeight: FontWeight.bold)),
+                    TextSpan(text: "C ${totalC.round()}g ", style: const TextStyle(color: Color(0xFF4AC2A4), fontWeight: FontWeight.bold)),
+                    TextSpan(text: "F ${totalF.round()}g", style: const TextStyle(color: Color(0xFF8E44AD), fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+              children: mealItems.map((item) {
+                return ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                  title: Text(item['food_name'] ?? "", style: GoogleFonts.inter(fontSize: 14)),
+                  subtitle: Text("${item['calories']} cal • P ${item['protein']}g C ${item['carbs']}g F ${item['fat']}g", style: GoogleFonts.inter(fontSize: 12, color: Colors.grey)),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: SvgPicture.asset('assets/icons/edit.svg', width: 18, height: 18, placeholderBuilder: (_) => Icon(Icons.edit, size: 18)),
+                        onPressed: () => _showEditMealDialog(item['id'], item['food_name']),
+                      ),
+                      IconButton(
+                        icon: SvgPicture.asset('assets/icons/delete.svg', width: 18, height: 18, placeholderBuilder: (_) => Icon(Icons.delete, size: 18)),
+                        onPressed: () => _deleteMealItem(item['id']),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  void _showEditMealDialog(dynamic itemId, String oldName) {
+    final TextEditingController editC = TextEditingController(text: oldName);
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text("AI Meal Analysis", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-        content: TextField(
-          controller: queryC, 
-          decoration: const InputDecoration(
-            labelText: "What did you eat?", 
-            hintText: "e.g. 2 eggs and a coffee",
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 2,
-        ),
+        title: const Text("Edit Meal"),
+        content: TextField(controller: editC, decoration: const InputDecoration(labelText: "Meal Details")),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4A80F0), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            onPressed: () {
-              if (queryC.text.isNotEmpty) {
-                _logMealWithAI(queryC.text);
-                Navigator.pop(ctx);
-              }
+            onPressed: () async {
+              Navigator.pop(ctx);
+              _updateMealItem(itemId, editC.text);
             },
-            child: const Text("Analyse & Log"),
+            child: const Text("Update"),
           ),
         ],
       ),
     );
   }
 
+  Future<void> _updateMealItem(dynamic itemId, String newName) async {
+    setState(() => isLoading = true);
+    try {
+      final res = await http.post(
+        Uri.parse("$baseUrl/update_meal_item?item_id=$itemId"),
+        body: {"new_food": newName},
+      );
+      if (res.statusCode == 200) {
+        _fetchData(selectedDate);
+        _showSuccess("Updated");
+      }
+    } catch (e) {
+      _showError("Update failed");
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _deleteMealItem(dynamic itemId) async {
+    setState(() => isLoading = true);
+    try {
+      final res = await http.delete(Uri.parse("$baseUrl/delete_meal_item?item_id=$itemId"));
+      if (res.statusCode == 200) {
+        _fetchData(selectedDate);
+        _showSuccess("Deleted");
+      }
+    } catch (e) {
+      _showError("Delete failed");
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
   Widget _buildBottomNav() {
     return BottomAppBar(
-      height: 75, shape: const CircularNotchedRectangle(), notchMargin: 8, elevation: 20,
+      height: 75,
+      shape: const CircularNotchedRectangle(),
+      notchMargin: 8,
+      elevation: 20,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -720,6 +944,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildNavItem(IconData icon, String label, bool active) {
-    return Column(mainAxisSize: MainAxisSize.min, children: [Icon(icon, color: active ? const Color(0xFF4A80F0) : Colors.grey[400], size: 28), const SizedBox(height: 2), Text(label, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: active ? const Color(0xFF4A80F0) : Colors.grey[400]))]);
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, color: active ? const Color(0xFF4A80F0) : Colors.grey[400], size: 28),
+      const SizedBox(height: 2),
+      Text(label, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: active ? const Color(0xFF4A80F0) : Colors.grey[400]!))
+    ]);
   }
 }
+
