@@ -314,7 +314,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   'assets/icons/01_spark.svg',
                   width: 20,
                   height: 20,
-
+                  color: const Color(0xFFFFB800),
+                  colorBlendMode: BlendMode.srcIn,
                 )
               ],
             ),
@@ -425,7 +426,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       'assets/icons/03_fire.svg', // Ensure your fire.svg is in assets/icons/
                       width: 24,
                       height: 24,
-
+                      color: const Color(0xFF4A80F0),
+                      colorBlendMode: BlendMode.srcIn,
                     ),
                     const SizedBox(width: 8), // Add some space between icon and text
                     Text("${(totals['cal'] ?? 0).round()} cal", 
@@ -481,13 +483,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Row(
           children: [
             // The new SVG icon
-            ColorFiltered(
-              colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-              child: SvgPicture.asset(
-                assetPath,
-                width: 14,
-                height: 14,
-              ),
+            SvgPicture.asset(
+              assetPath,
+              width: 14,
+              height: 14,
+              color: color,
+              colorBlendMode: BlendMode.srcIn,
             ),
              const SizedBox(width: 6),
             Text(label, style: GoogleFonts.inter(fontSize: 11, color: Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.w600)),
@@ -575,23 +576,21 @@ Widget _buildWaterBottle(double progress) {
             ),
             
             // 2. The Bottle Mask/Overlay
-            ColorFiltered(
-              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-              child: SvgPicture.asset(
-                'assets/icons/02_water_bottle.svg',
-                fit: BoxFit.fill,
-                width: 111,
-                height: totalHeight,
-              ),
+            SvgPicture.asset(
+              'assets/icons/02_water_bottle.svg',
+              fit: BoxFit.fill,
+              width: 111,
+              height: totalHeight,
+              color: Colors.white,
+              colorBlendMode: BlendMode.srcIn,
             ),
-            ColorFiltered(
-              colorFilter: const ColorFilter.mode(Color.fromARGB(255, 143, 143, 143), BlendMode.srcIn),
-              child: SvgPicture.asset(
-                'assets/icons/02_water_bottle3.svg',
-                fit: BoxFit.fill,
-                width: 111,
-                height: totalHeight,
-              ),
+            SvgPicture.asset(
+              'assets/icons/02_water_bottle3.svg',
+              fit: BoxFit.fill,
+              width: 111,
+              height: totalHeight,
+              color: const Color.fromARGB(255, 143, 143, 143),
+              colorBlendMode: BlendMode.srcIn,
             ),
             Positioned(
               bottom: 33, // Adjust this to move the label up/down to match your red box
@@ -676,11 +675,10 @@ Widget _buildWaterBottle(double progress) {
           onPressed: () => setState(() => isMenuOpen = !isMenuOpen),
           backgroundColor: const Color(0xFF4A80F0),
           elevation: 4,
-          child: ColorFiltered(
-            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-            child: SvgPicture.asset(isMenuOpen ? 'assets/icons/delete.svg' : 'assets/icons/09_add.svg', 
-              width: 28, height: 28),
-          ),
+          child: SvgPicture.asset(isMenuOpen ? 'assets/icons/delete.svg' : 'assets/icons/09_add.svg', 
+            width: 28, height: 28, 
+            color: Colors.white, 
+            colorBlendMode: BlendMode.srcIn),
         ),
       ],
     );
@@ -859,11 +857,10 @@ Widget _buildWaterBottle(double progress) {
               leading: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                child: ColorFiltered(
-                  colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-                  child: SvgPicture.asset('assets/icons/$type.svg', width: 24, height: 24, 
-                    placeholderBuilder: (context) => Icon(Icons.restaurant, color: color)),
-                ),
+                child: SvgPicture.asset('assets/icons/$type.svg', width: 24, height: 24, 
+                  color: color, 
+                  colorBlendMode: BlendMode.srcIn,
+                  placeholderBuilder: (context) => Icon(Icons.restaurant, color: color)),
               ),
               title: Text(type, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 17, color: color)),
               subtitle: RichText(
@@ -886,19 +883,17 @@ Widget _buildWaterBottle(double progress) {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: ColorFiltered(
-                          colorFilter: ColorFilter.mode(Colors.grey[800]!, BlendMode.srcIn),
-                          child: SvgPicture.asset('assets/icons/edit.svg', width: 18, height: 18, 
-                            placeholderBuilder: (_) => Icon(Icons.edit, size: 18)),
-                        ),
+                        icon: SvgPicture.asset('assets/icons/edit.svg', width: 18, height: 18, 
+                          color: Colors.grey[800]!, 
+                          colorBlendMode: BlendMode.srcIn,
+                          placeholderBuilder: (_) => Icon(Icons.edit, size: 18)),
                         onPressed: () => _showEditMealDialog(item['id'], item['food_name']),
                       ),
                       IconButton(
-                        icon: ColorFiltered(
-                          colorFilter: ColorFilter.mode(Colors.grey[800]!, BlendMode.srcIn),
-                          child: SvgPicture.asset('assets/icons/delete.svg', width: 18, height: 18, 
-                            placeholderBuilder: (_) => Icon(Icons.delete, size: 18)),
-                        ),
+                        icon: SvgPicture.asset('assets/icons/delete.svg', width: 18, height: 18, 
+                          color: Colors.grey[800]!, 
+                          colorBlendMode: BlendMode.srcIn,
+                          placeholderBuilder: (_) => Icon(Icons.delete, size: 18)),
                         onPressed: () => _deleteMealItem(item['id']),
                       ),
                     ],
@@ -996,10 +991,9 @@ Widget _buildWaterBottle(double progress) {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ColorFiltered(
-            colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-            child: SvgPicture.asset(iconPath, width: 24, height: 24),
-          ),
+          SvgPicture.asset(iconPath, width: 24, height: 24, 
+            color: color, 
+            colorBlendMode: BlendMode.srcIn),
           const SizedBox(height: 4),
           Text(label, style: GoogleFonts.inter(fontSize: 10, fontWeight: isSel ? FontWeight.bold : FontWeight.normal, color: color)),
         ],

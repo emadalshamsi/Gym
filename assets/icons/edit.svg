@@ -3,13 +3,13 @@
    width="24"
    height="24"
    viewBox="0 0 24 24"
-   fill="none"
+   fill="#ffffff"
    version="1.1"
    id="svg2"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
   <path
-     style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;fill:#ffffff;stroke-linejoin:round;enable-background:accumulate;stop-color:#000000;fill-opacity:1;opacity:0.4"
+     style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;fill:#ffffff;stroke-linejoin:round;enable-background:accumulate;stop-color:#000000;fill-opacity:1;"
      d="M 4,18.1083 V 16.0877 C 4,14.7299 4.42425,13.406 5.21346,12.3012 l 0.6656,-0.9319 C 7.94544,8.47639 10.4764,5.94544 13.3693,3.87906 l 0.9038,-0.64553 c 1.0624,-0.75889 2.4763,-0.85882 3.6441,-0.27493 1.3386,0.66928 2.4446,1.76498 3.1139,3.10353 0.5926,1.18522 0.4558,2.60485 -0.3521,3.65517 l -0.5569,0.724 c -2.066,2.6857 -4.5792,4.9954 -7.4294,6.8277 l -1.5372,0.9882 c -0.7623,0.49 -1.61655,0.8196 -2.51052,0.9686 L 5.86593,19.689 C 5.22227,19.7963 4.90044,19.8499 4.64979,19.7562 4.43218,19.6748 4.24968,19.5203 4.13365,19.319 4,19.0871 4,18.7609 4,18.1083 Z"
      id="path3" />
   <path
