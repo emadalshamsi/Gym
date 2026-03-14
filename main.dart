@@ -482,11 +482,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             // The new SVG icon
               SvgPicture.asset(
-              assetPath,
-              width: 14,
-              height: 14,
-              color: color,
-              colorBlendMode: BlendMode.srcIn,
+                assetPath,
+                width: 14,
+                height: 14,
+                colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
               ),
              const SizedBox(width: 6),
             Text(label, style: GoogleFonts.inter(fontSize: 11, color: Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.w600)),
@@ -579,14 +578,14 @@ Widget _buildWaterBottle(double progress) {
               fit: BoxFit.fill,
               width: 111,
               height: totalHeight,
-              color: Colors.white,
+              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
             ),
             SvgPicture.asset(
               'assets/icons/02_water_bottle3.svg',
               fit: BoxFit.fill,
               width: 111,
               height: totalHeight,
-              color: const Color.fromARGB(255, 143, 143, 143),
+              colorFilter: const ColorFilter.mode(Color.fromARGB(255, 143, 143, 143), BlendMode.srcIn),
             ),
             Positioned(
               bottom: 33, // Adjust this to move the label up/down to match your red box
@@ -672,7 +671,7 @@ Widget _buildWaterBottle(double progress) {
           backgroundColor: const Color(0xFF4A80F0),
           elevation: 4,
           child: SvgPicture.asset(isMenuOpen ? 'assets/icons/delete.svg' : 'assets/icons/09_add.svg', 
-            width: 28, height: 28, color: Colors.white),
+            width: 28, height: 28, colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
         ),
       ],
     );
@@ -852,7 +851,7 @@ Widget _buildWaterBottle(double progress) {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
                 child: SvgPicture.asset('assets/icons/$type.svg', width: 24, height: 24, 
-                  color: color, colorBlendMode: BlendMode.srcIn,
+                  colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
                   placeholderBuilder: (context) => Icon(Icons.restaurant, color: color)),
               ),
               title: Text(type, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 17, color: color)),
@@ -876,11 +875,15 @@ Widget _buildWaterBottle(double progress) {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: SvgPicture.asset('assets/icons/edit.svg', width: 18, height: 18, color: Colors.grey[800], placeholderBuilder: (_) => Icon(Icons.edit, size: 18)),
+                        icon: SvgPicture.asset('assets/icons/edit.svg', width: 18, height: 18, 
+                          colorFilter: ColorFilter.mode(Colors.grey[800]!, BlendMode.srcIn), 
+                          placeholderBuilder: (_) => Icon(Icons.edit, size: 18)),
                         onPressed: () => _showEditMealDialog(item['id'], item['food_name']),
                       ),
                       IconButton(
-                        icon: SvgPicture.asset('assets/icons/delete.svg', width: 18, height: 18, color: Colors.grey[800], placeholderBuilder: (_) => Icon(Icons.delete, size: 18)),
+                        icon: SvgPicture.asset('assets/icons/delete.svg', width: 18, height: 18, 
+                          colorFilter: ColorFilter.mode(Colors.grey[800]!, BlendMode.srcIn), 
+                          placeholderBuilder: (_) => Icon(Icons.delete, size: 18)),
                         onPressed: () => _deleteMealItem(item['id']),
                       ),
                     ],
@@ -978,7 +981,7 @@ Widget _buildWaterBottle(double progress) {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SvgPicture.asset(iconPath, width: 24, height: 24, color: color),
+          SvgPicture.asset(iconPath, width: 24, height: 24, colorFilter: ColorFilter.mode(color, BlendMode.srcIn)),
           const SizedBox(height: 4),
           Text(label, style: GoogleFonts.inter(fontSize: 10, fontWeight: isSel ? FontWeight.bold : FontWeight.normal, color: color)),
         ],
