@@ -1,5 +1,7 @@
 import os, requests, json, re, logging
-from fastapi import FastAPI, Form, Query, Request
+from fastapi import FastAPI, Form, Query, Request, Body
+from pydantic import BaseModel
+from typing import Optional
 from fastapi.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
 from dotenv import load_dotenv
@@ -73,10 +75,29 @@ def get_ai_nutrition_estimate(food_query):
         logger.error(f"Gemini Error: {e}")
         return {"cal": 0, "prot": 0, "carb": 0, "fat": 0, "weight": 0}, {"error": str(e)}
 
+# --- Pydantic Models for JSON Requests ---
+class MealLogRequest(BaseModel):
+    user_id: str
+    meal_type: str
+    items_ar: str
+    date: Optional[str] = None
+
+class WaterLogRequest(BaseModel):
+    user_id: str
+    amount_ml: int
+    date: Optional[str] = None
+
+class MealUpdateRequest(BaseModel):
+    item_id: str
+    new_food: str
+
 # --- 1. تسجيل الوجبات (Log Meal) ---
 @app.post("/log_meal")
-async def log_meal(user_id: str = Query(...), meal_type: str = Query(...), items_ar: str = Form(...), date: str = Form(None)):
-    log_time = date if date else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+async def log_meal(data: MealLogRequest):
+    user_id = data.user_id
+    meal_type = data.meal_type
+    items_ar = data.items_ar
+    log_time = data.date if data.date else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     logger.info(f"Logging meal: {meal_type} for {user_id} at {log_time}")
     
     try:
@@ -116,7 +137,9 @@ async def delete_meal_item(item_id: str = Query(...)):
 
 # --- 1c. تحديث وجبة (Update Meal Item) ---
 @app.post("/update_meal_item")
-async def update_meal_item(item_id: str = Query(...), new_food: str = Form(...)):
+async def update_meal_item(data: MealUpdateRequest):
+    item_id = data.item_id
+    new_food = data.new_food
     try:
         nutri, _ = get_ai_nutrition_estimate(new_food)
         supabase.table("meal_items").update({
@@ -134,8 +157,10 @@ async def update_meal_item(item_id: str = Query(...), new_food: str = Form(...))
 
 # --- 2. تسجيل المياه (Log Water) ---
 @app.post("/log_water")
-async def log_water(user_id: str = Query(...), amount_ml: str = Form(...), date: str = Form(None)):
-    log_time = date if date else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+async def log_water(data: WaterLogRequest):
+    user_id = data.user_id
+    amount_ml = data.amount_ml
+    log_time = data.date if data.date else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     logger.info(f"Logging water: {amount_ml}ml for {user_id} at {log_time}")
     try:
         data = {
