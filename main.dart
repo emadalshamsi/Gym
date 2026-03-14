@@ -30,7 +30,6 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF5F9FF),
       ),
       home: const DashboardScreen(),
-      locale: const Locale('ar', 'AE'),
       supportedLocales: const [Locale('ar', 'AE'), Locale('en', 'US')],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
@@ -155,6 +154,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final response = await http.post(
         Uri.parse(url),
+        headers: {"Content-Type": "application/x-www-form-urlencoded; charset=utf-8"},
         body: {
           "items_ar": query,
           "date": dateStr,
@@ -180,6 +180,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final response = await http.post(
         Uri.parse("$baseUrl/log_water?user_id=$userId"),
+        headers: {"Content-Type": "application/x-www-form-urlencoded; charset=utf-8"},
         body: {
           "amount_ml": amount.toString(),
           "date": dateStr,
@@ -896,6 +897,7 @@ Widget _buildWaterBottle(double progress) {
     try {
       final res = await http.post(
         Uri.parse("$baseUrl/update_meal_item?item_id=$itemId"),
+        headers: {"Content-Type": "application/x-www-form-urlencoded; charset=utf-8"},
         body: {"new_food": newName},
       );
       if (res.statusCode == 200) {
