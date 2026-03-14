@@ -154,11 +154,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final response = await http.post(
         Uri.parse(url),
-        headers: {"Content-Type": "application/x-www-form-urlencoded; charset=utf-8"},
-        body: {
+        headers: {"Content-Type": "application/json; charset=utf-8"},
+        body: json.encode({
+          "user_id": userId,
+          "meal_type": mealType,
           "items_ar": query,
           "date": dateStr,
-        },
+        }),
       );
 
       if (response.statusCode == 200) {
@@ -179,12 +181,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final dateStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(selectedDate);
     try {
       final response = await http.post(
-        Uri.parse("$baseUrl/log_water?user_id=$userId"),
-        headers: {"Content-Type": "application/x-www-form-urlencoded; charset=utf-8"},
-        body: {
-          "amount_ml": amount.toString(),
+        Uri.parse("$baseUrl/log_water"),
+        headers: {"Content-Type": "application/json; charset=utf-8"},
+        body: json.encode({
+          "user_id": userId,
+          "amount_ml": amount,
           "date": dateStr,
-        },
+        }),
       );
       if (response.statusCode == 200) {
         await _fetchData(selectedDate); // تحديث البيانات فوراً
@@ -809,9 +812,17 @@ Widget _buildWaterBottle(double progress) {
     final typesOrder = ["Breakfast", "Lunch", "Dinner", "Snack"];
     final existingTypes = typesOrder.where((t) => grouped.containsKey(t)).toList();
 
+    final Map<String, Color> mealColors = {
+      "Breakfast": const Color(0xFFE67E22), // Deep Orange
+      "Lunch": const Color(0xFF4A80F0),     // Primary Blue
+      "Dinner": const Color(0xFF2C3E50),    // Midnight Blue
+      "Snack": const Color(0xFF27AE60),     // Forest Green
+    };
+
     return Column(
       children: existingTypes.map((type) {
         final mealItems = grouped[type]!;
+        final Color color = mealColors[type] ?? const Color(0xFF4A80F0);
         double totalCal = 0, totalP = 0, totalC = 0, totalF = 0;
         for (var i in mealItems) {
           totalCal += (i['calories'] ?? 0).toDouble();
@@ -824,15 +835,21 @@ Widget _buildWaterBottle(double progress) {
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
           child: Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            data: Theme.of(context).copyWith(
+              dividerColor: Colors.transparent,
+              splashColor: Colors.transparent,
+              highlightColor: Colors.transparent,
+              hoverColor: Colors.transparent,
+            ),
             child: ExpansionTile(
               leading: Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: const Color(0xFFF0F4FF), borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
                 child: SvgPicture.asset('assets/icons/$type.svg', width: 24, height: 24, 
-                  placeholderBuilder: (context) => Icon(Icons.restaurant, color: Color(0xFF4A80F0))),
+                  color: color, colorBlendMode: BlendMode.srcIn,
+                  placeholderBuilder: (context) => Icon(Icons.restaurant, color: color)),
               ),
-              title: Text(type, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 17)),
+              title: Text(type, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 17, color: color)),
               subtitle: RichText(
                 text: TextSpan(
                   style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[500]),
@@ -896,9 +913,12 @@ Widget _buildWaterBottle(double progress) {
     setState(() => isLoading = true);
     try {
       final res = await http.post(
-        Uri.parse("$baseUrl/update_meal_item?item_id=$itemId"),
-        headers: {"Content-Type": "application/x-www-form-urlencoded; charset=utf-8"},
-        body: {"new_food": newName},
+        Uri.parse("$baseUrl/update_meal_item"),
+        headers: {"Content-Type": "application/json; charset=utf-8"},
+        body: json.encode({
+          "item_id": itemId.toString(),
+          "new_food": newName,
+        }),
       );
       if (res.statusCode == 200) {
         _fetchData(selectedDate);
