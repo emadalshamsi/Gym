@@ -986,6 +986,5 @@ Widget _buildWaterBottle(double progress) {
     );
   }
 
-  int _currentIndex = 0; // Ensure this is added to state if missing
 }
 
