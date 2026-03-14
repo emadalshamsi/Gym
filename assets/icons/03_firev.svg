@@ -8,17 +8,6 @@
    id="svg1"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
-  <defs
-     id="defs1">
-    <linearGradient
-       id="swatch1">
-      <stop
-         style="stop-color:#7900ff;stop-opacity:1;"
-         offset="0"
-         id="stop1" />
-    </linearGradient>
-  </defs>
-  
   <g
      id="path1"
      style="display:inline;opacity:1;fill:#ffffff;fill-opacity:1">
