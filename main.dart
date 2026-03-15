@@ -1143,7 +1143,7 @@ Widget _buildWaterBottle(double progress) {
               padding: const EdgeInsets.symmetric(horizontal: 10), // تعديل الهامش الجانبي للشارت هنا
               child: LineChart(
                 LineChartData(
-                clipData: FlClipData.all(), // Prevent lines from leaking outside the bounds
+                clipData: const FlClipData(top: false, bottom: true, left: true, right: true), // Allow peaks to breathe
                 gridData: FlGridData(show: false),
                 titlesData: FlTitlesData(
                   leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -1152,6 +1152,7 @@ Widget _buildWaterBottle(double progress) {
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
+                      reservedSize: 32, // Fixed height for labels area
                       interval: 1,
                       getTitlesWidget: (val, meta) {
                         const style = TextStyle(color: Colors.grey, fontSize: 10);
@@ -1160,30 +1161,32 @@ Widget _buildWaterBottle(double progress) {
                         
                         try {
                           final date = DateTime.parse(data[idx]['date']);
-                          if (_statsView == "Week") {
-                            return Padding(padding: const EdgeInsets.only(top: 8.0), child: Text(DateFormat('E').format(date), style: style));
-                          } else {
-                            if (idx % 7 == 0) return Text(DateFormat('Md').format(date), style: style);
-                          }
+                          String text = _statsView == "Week" ? DateFormat('E').format(date) : (idx % 7 == 0 ? DateFormat('Md').format(date) : "");
+                          if (text.isEmpty) return const Text("");
+                          return SideTitleWidget(
+                            axisSide: meta.axisSide,
+                            space: 12, // Consistent gap from chart to text
+                            child: Text(text, style: style),
+                          );
                         } catch (e) {}
                         return const Text("");
                       },
                     ),
                   ),
                 ),
-                minX: 0,
+                minX: -0.2, // Small buffer at start
                 maxX: data.isEmpty 
                   ? (_statsView == "Week" ? 7 : 30).toDouble() 
-                  : (data.length - 1 + (_statsView == "Month" ? 3 : 1)).toDouble(),
+                  : (data.length - 1 + (_statsView == "Month" ? 3 : 1)).toDouble() + 0.2, // Small buffer at end
                 minY: 0,
-                maxY: target * 1.1,
+                maxY: target * 1.25, // Increased headspace (25%) to prevent peak clipping
                 borderData: FlBorderData(show: false),
                 lineBarsData: [
                   LineChartBarData(
                     spots: _getSpots(data, target, true), 
                     isCurved: true,
                     color: themeColor,
-                    barWidth: 4,
+                    barWidth: 2.5, // Thinner lines
                     dotData: FlDotData(show: false),
                     belowBarData: BarAreaData(show: true, color: themeColor.withOpacity(0.1)),
                   ),
@@ -1191,7 +1194,7 @@ Widget _buildWaterBottle(double progress) {
                     spots: _getForecastSpots(data, target),
                     isCurved: true,
                     color: themeColor.withOpacity(0.4),
-                    barWidth: 3,
+                    barWidth: 2, // Thinner lines
                     dashArray: [5, 5],
                     dotData: FlDotData(show: false),
                   ),
@@ -1199,7 +1202,7 @@ Widget _buildWaterBottle(double progress) {
                     spots: _getSpots(data, target, false), 
                     isCurved: false,
                     color: Colors.grey[300],
-                    barWidth: 2,
+                    barWidth: 1.5, // Thinner lines
                     dashArray: [5, 5],
                     dotData: FlDotData(show: false),
                   ),
