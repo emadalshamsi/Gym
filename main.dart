@@ -855,9 +855,10 @@ Widget _buildWaterBottle(double progress) {
             ),
             child: ExpansionTile(
               leading: Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(8), // Reduced from 10
                 decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                child: SvgPicture.asset('assets/icons/$type.svg', width: 24, height: 24, 
+                child: SvgPicture.asset('assets/icons/$type.svg', width: 28, height: 28, // Slightly larger base
+                  fit: BoxFit.contain, // Ensures no cropping on iPhone
                   placeholderBuilder: (context) => Icon(Icons.restaurant, color: color)),
               ),
               title: Text(type, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 17, color: color)),
@@ -873,22 +874,32 @@ Widget _buildWaterBottle(double progress) {
                 ),
               ),
               children: mealItems.map((item) {
+                // Ensure name is single line and ignores newlines
+                String foodName = (item['food_name'] ?? "").toString().replaceAll("\n", " ").trim();
+                
                 return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                  title: Text(item['food_name'] ?? "", style: GoogleFonts.inter(fontSize: 14)),
-                  subtitle: Text("${item['calories']} cal • P ${item['protein']}g C ${item['carbs']}g F ${item['fat']}g", style: GoogleFonts.inter(fontSize: 12, color: Colors.grey)),
+                  dense: true, // Tightens the layout
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0), // Zero vertical padding
+                  visualDensity: const VisualDensity(vertical: -4), // Pulls items closer
+                  title: Text(
+                    foodName, 
+                    style: GoogleFonts.inter(fontSize: 14),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text("${item['calories']} cal • P ${item['protein']}g C ${item['carbs']}g F ${item['fat']}g", style: GoogleFonts.inter(fontSize: 11, color: Colors.grey)),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       GestureDetector(
-                        onTap: () => _showEditMealDialog(item['id'], item['food_name']),
+                        onTap: () => _showEditMealDialog(item['id'], foodName),
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           child: SvgPicture.asset('assets/icons/edit.svg', width: 20, height: 20, 
                             placeholderBuilder: (_) => Icon(Icons.edit, size: 20, color: Colors.grey[800])),
                         ),
                       ),
-                      const SizedBox(width: 4), // Reduced gap
+                      const SizedBox(width: 2), // ADJUST THIS NUMBER for space between edit and delete
                       GestureDetector(
                         onTap: () => _deleteMealItem(item['id']),
                         child: Container(
