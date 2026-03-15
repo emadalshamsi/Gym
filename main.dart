@@ -1129,8 +1129,10 @@ Widget _buildWaterBottle(double progress) {
           ),
           const SizedBox(height: 20),
           Expanded(
-            child: LineChart(
-              LineChartData(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10), // تعديل الهامش الجانبي للشارت هنا
+              child: LineChart(
+                LineChartData(
                 gridData: FlGridData(show: false),
                 titlesData: FlTitlesData(
                   leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
