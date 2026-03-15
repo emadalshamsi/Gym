@@ -882,19 +882,26 @@ Widget _buildWaterBottle(double progress) {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      IconButton(
-                        icon: SvgPicture.asset('assets/icons/edit.svg', width: 18, height: 18, 
-                          color: Colors.grey[800]!, 
-                          colorBlendMode: BlendMode.srcIn,
-                          placeholderBuilder: (_) => Icon(Icons.edit, size: 18)),
-                        onPressed: () => _showEditMealDialog(item['id'], item['food_name']),
+                      GestureDetector(
+                        onTap: () => _showEditMealDialog(item['id'], item['food_name']),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          child: SvgPicture.asset('assets/icons/edit.svg', width: 20, height: 20, 
+                            color: Colors.grey[800]!, 
+                            colorBlendMode: BlendMode.srcIn,
+                            placeholderBuilder: (_) => Icon(Icons.edit, size: 20, color: Colors.grey[800])),
+                        ),
                       ),
-                      IconButton(
-                        icon: SvgPicture.asset('assets/icons/delete.svg', width: 18, height: 18, 
-                          color: Colors.grey[800]!, 
-                          colorBlendMode: BlendMode.srcIn,
-                          placeholderBuilder: (_) => Icon(Icons.delete, size: 18)),
-                        onPressed: () => _deleteMealItem(item['id']),
+                      const SizedBox(width: 4), // Reduced gap
+                      GestureDetector(
+                        onTap: () => _deleteMealItem(item['id']),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          child: SvgPicture.asset('assets/icons/delete.svg', width: 20, height: 20, 
+                            color: Colors.grey[800]!, 
+                            colorBlendMode: BlendMode.srcIn,
+                            placeholderBuilder: (_) => Icon(Icons.delete, size: 20, color: Colors.grey[800])),
+                        ),
                       ),
                     ],
                   ),

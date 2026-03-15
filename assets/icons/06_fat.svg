@@ -8,11 +8,13 @@
    id="svg3"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs3" />
   <g
      id="path1"
      style="opacity:1">
     <path
-       style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;fill:#ffffff;fill-opacity:1;stroke-linejoin:round;enable-background:accumulate;stop-color:#000000;stop-opacity:1;"
+       style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;fill:#ffffff;fill-opacity:1.0;stroke-linejoin:round;enable-background:accumulate;stop-color:#000000;stop-opacity:1;opacity:1.0"
        d="M 5.43035,11.8483 C 5.79897,10.0051 6.78747,8.34378 8.23142,7.14048 L 12,4 15.7686,7.14048 c 1.4439,1.2033 2.4324,2.86462 2.8011,4.70782 l 0.1155,0.5775 c 0.2078,1.0392 0.2078,2.1092 0,3.1484 l -0.108,0.5396 c -0.3569,1.7848 -1.6428,3.2414 -3.3695,3.817 -2.0821,0.694 -4.3333,0.694 -6.41543,0 C 7.0656,19.3552 5.77971,17.8986 5.42277,16.1138 L 5.31484,15.5742 c -0.20783,-1.0392 -0.20784,-2.1092 0,-3.1484 z"
        id="path4" />
     <path

@@ -8,8 +8,10 @@
    id="svg3"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
   <rect
-     style="fill:#ffffff;stroke:none;stroke-width:0.5;stroke-linecap:round;stroke-dasharray:3, 2;stroke-dashoffset:3.25"
+     style="fill:#ffffff;stroke:none;stroke-width:0.5;stroke-linecap:round;stroke-dasharray:3, 2;stroke-dashoffset:3.25;opacity:1.0"
      id="rect4"
      width="13.113983"
      height="14.467685"
