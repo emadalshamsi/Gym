@@ -855,10 +855,10 @@ Widget _buildWaterBottle(double progress) {
             ),
             child: ExpansionTile(
               leading: Container(
-                padding: const EdgeInsets.all(8), // Reduced from 10
+                padding: const EdgeInsets.all(6), // Reduced from 8 to give more room
                 decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                child: SvgPicture.asset('assets/icons/$type.svg', width: 27, height: 27, // Slightly larger base
-                  fit: BoxFit.contain, // Ensures no cropping on iPhone
+                child: SvgPicture.asset('assets/icons/$type.svg', width: 24, height: 24, // Standard 24x24
+                  fit: BoxFit.contain,
                   placeholderBuilder: (context) => Icon(Icons.restaurant, color: color)),
               ),
               title: Text(type, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 17, color: color)),
