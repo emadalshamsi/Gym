@@ -1157,6 +1157,7 @@ Widget _buildWaterBottle(double progress) {
                       getTitlesWidget: (val, meta) {
                         const style = TextStyle(color: Colors.grey, fontSize: 10);
                         int idx = val.toInt();
+                        if (val != idx.toDouble()) return const Text(""); // Prevent duplicate labels due to buffers
                         if (data.isEmpty || idx < 0 || idx >= data.length) return const Text("");
                         
                         try {
