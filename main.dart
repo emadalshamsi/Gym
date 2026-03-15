@@ -858,8 +858,6 @@ Widget _buildWaterBottle(double progress) {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
                 child: SvgPicture.asset('assets/icons/$type.svg', width: 24, height: 24, 
-                  color: color, 
-                  colorBlendMode: BlendMode.srcIn,
                   placeholderBuilder: (context) => Icon(Icons.restaurant, color: color)),
               ),
               title: Text(type, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 17, color: color)),
@@ -887,8 +885,6 @@ Widget _buildWaterBottle(double progress) {
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           child: SvgPicture.asset('assets/icons/edit.svg', width: 20, height: 20, 
-                            color: Colors.grey[800]!, 
-                            colorBlendMode: BlendMode.srcIn,
                             placeholderBuilder: (_) => Icon(Icons.edit, size: 20, color: Colors.grey[800])),
                         ),
                       ),
@@ -898,8 +894,6 @@ Widget _buildWaterBottle(double progress) {
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           child: SvgPicture.asset('assets/icons/delete.svg', width: 20, height: 20, 
-                            color: Colors.grey[800]!, 
-                            colorBlendMode: BlendMode.srcIn,
                             placeholderBuilder: (_) => Icon(Icons.delete, size: 20, color: Colors.grey[800])),
                         ),
                       ),
@@ -983,8 +977,8 @@ Widget _buildWaterBottle(double progress) {
           _buildNavItem("Today", 'assets/icons/07_home.svg', 0),
           _buildNavItem("Plan", 'assets/icons/08_calender.svg', 1),
           const SizedBox(width: 48),
-          _buildNavItem("Stats", 'assets/icons/03_fire.svg', 2),
-          _buildNavItem("Profile", 'assets/icons/04_protein.svg', 3),
+          _buildNavItem("Stats", 'assets/icons/10_stats.svg', 2),
+          _buildNavItem("Profile", 'assets/icons/11_profile.svg', 3),
         ],
       ),
     );
@@ -992,17 +986,19 @@ Widget _buildWaterBottle(double progress) {
 
   Widget _buildNavItem(String label, String iconPath, int index) {
     bool isSel = _currentIndex == index;
-    Color color = isSel ? const Color(0xFF4A80F0) : Colors.grey[400]!;
+    Color labelColor = isSel ? const Color(0xFF4A80F0) : Colors.grey[400]!;
+    
+    // Switch to '...2.svg' for inactive state as requested
+    String currentIconPath = isSel ? iconPath : iconPath.replaceFirst('.svg', '2.svg');
+
     return GestureDetector(
       onTap: () => setState(() => _currentIndex = index),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SvgPicture.asset(iconPath, width: 24, height: 24, 
-            color: color, 
-            colorBlendMode: BlendMode.srcIn),
+          SvgPicture.asset(currentIconPath, width: 24, height: 24),
           const SizedBox(height: 4),
-          Text(label, style: GoogleFonts.inter(fontSize: 10, fontWeight: isSel ? FontWeight.bold : FontWeight.normal, color: color)),
+          Text(label, style: GoogleFonts.inter(fontSize: 10, fontWeight: isSel ? FontWeight.bold : FontWeight.normal, color: labelColor)),
         ],
       ),
     );
