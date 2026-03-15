@@ -1194,6 +1194,7 @@ Widget _buildWaterBottle(double progress) {
               ),
             ),
           ),
+        ),
         ],
       ),
     );
