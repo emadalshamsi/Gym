@@ -1103,7 +1103,7 @@ Widget _buildWaterBottle(double progress) {
   Widget _buildChartCard(String title, List<dynamic> data, double target, Color themeColor) {
     return Container(
       padding: const EdgeInsets.all(16),
-      height: 260,
+      height: 190,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -1159,7 +1159,7 @@ Widget _buildWaterBottle(double progress) {
                   ),
                 ),
                 minX: 0,
-                maxX: (_statsView == "Week" ? 7 + 1 : 30 + 3).toDouble(),
+                maxX: (data.length - 1 + (_statsView == "Month" ? 3 : 1)).toDouble(),
                 minY: 0,
                 maxY: target * 1.1,
                 borderData: FlBorderData(show: false),
