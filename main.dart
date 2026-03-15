@@ -1196,11 +1196,10 @@ Widget _buildWaterBottle(double progress) {
                   ),
                 ],
               ),
-              duration: Duration.zero, // Disable animation to prevent "stretching" glitch
+              swapAnimationDuration: Duration.zero, // Disable animation to prevent "stretching" glitch
             ),
           ),
         ),
-      ),
         ],
       ),
     );
