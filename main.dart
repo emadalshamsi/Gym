@@ -1035,4 +1035,143 @@ Widget _buildWaterBottle(double progress) {
     );
   }
 
+  Widget _buildStatsScreen() {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 20),
+            Text("Statistics", style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w900, color: const Color(0xFF1A1A1A))),
+            const SizedBox(height: 20),
+            _buildStatsToggle(),
+            const SizedBox(height: 30),
+            _buildChartCard(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatsToggle() {
+    return Container(
+      decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(15)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: ["Week", "Month"].map((view) {
+          bool isSelected = _statsView == view;
+          return GestureDetector(
+            onTap: () => setState(() => _statsView = view),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF4A80F0) : Colors.transparent,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Text(view, style: GoogleFonts.inter(color: isSelected ? Colors.white : Colors.grey[600], fontWeight: FontWeight.bold)),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildChartCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      height: 350,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 8))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Calorie Intake Chart", style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1A1A1A))),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _buildChartLegend("Achieved", const Color(0xFF4A80F0)),
+              const SizedBox(width: 15),
+              _buildChartLegend("Target", Colors.grey[300]!),
+            ],
+          ),
+          const SizedBox(height: 25),
+          Expanded(
+            child: LineChart(
+              LineChartData(
+                gridData: FlGridData(show: false),
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (val, meta) {
+                        const style = TextStyle(color: Colors.grey, fontSize: 10);
+                        if (_statsView == "Week") {
+                          const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+                          if (val >= 0 && val < 7) return Text(days[val.toInt()], style: style);
+                        } else {
+                          if (val % 5 == 0) return Text("${val.toInt()}", style: style);
+                        }
+                        return const Text("");
+                      },
+                    ),
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: _getSpots(true), 
+                    isCurved: true,
+                    color: const Color(0xFF4A80F0),
+                    barWidth: 4,
+                    dotData: FlDotData(show: false),
+                    belowBarData: BarAreaData(show: true, color: const Color(0xFF4A80F0).withOpacity(0.1)),
+                  ),
+                  LineChartBarData(
+                    spots: _getSpots(false), 
+                    isCurved: true,
+                    color: Colors.grey[300],
+                    barWidth: 2,
+                    dashArray: [5, 5],
+                    dotData: FlDotData(show: false),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChartLegend(String label, Color color) {
+    return Row(
+      children: [
+        Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 6),
+        Text(label, style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[600])),
+      ],
+    );
+  }
+
+  List<FlSpot> _getSpots(bool isAchieved) {
+    if (_statsView == "Week") {
+      return isAchieved
+          ? [const FlSpot(0, 1800), const FlSpot(1, 2100), const FlSpot(2, 1600), const FlSpot(3, 2200), const FlSpot(4, 1900), const FlSpot(5, 2000), const FlSpot(6, 1700)]
+          : List.generate(7, (i) => FlSpot(i.toDouble(), targets['cal'] ?? 2000));
+    } else {
+      return isAchieved
+          ? List.generate(30, (i) => FlSpot(i.toDouble(), 1800 + (val(i) % 400).toDouble()))
+          : List.generate(30, (i) => FlSpot(i.toDouble(), targets['cal'] ?? 2000));
+    }
+  }
+
+  int val(int i) => (i * 137 + 42);
+
 }
