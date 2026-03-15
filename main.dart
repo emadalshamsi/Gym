@@ -71,8 +71,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchData();
-    _fetchStats();
+    _fetchInitialData();
+  }
+
+  Future<void> _fetchInitialData() async {
+    await _fetchData();
+    await _fetchStats();
   }
 
   Future<void> _fetchData([DateTime? date]) async {
@@ -139,16 +143,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final days = _statsView == "Week" ? 7 : 30;
     final url = "$baseUrl/get_stats?user_id=$userId&days=$days";
     try {
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 20)); // Increased timeout
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
         setState(() {
           calStatsData = data['calories'] ?? [];
           waterStatsData = data['water'] ?? [];
         });
+      } else {
+        debugPrint("Stats Server Error ${response.statusCode}: ${response.reasonPhrase}");
       }
     } catch (e) {
-      debugPrint("Stats fetch error: $e");
+      debugPrint("Stats Fetch error details: $e");
     }
   }
 

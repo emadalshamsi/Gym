@@ -251,7 +251,7 @@ async def get_stats(user_id: str = Query(...), days: int = Query(7)):
         if meal_ids:
             items_res = supabase.table("meal_items").select("calories, meal_id").in_("meal_id", meal_ids).execute()
             items_data = items_res.data if items_res.data else []
-            meal_id_to_date = {m['id']: m['created_at'][:10] for m in meals_data}
+            meal_id_to_date = {m['id']: (m.get('created_at') or "")[:10] for m in meals_data}
             for item in items_data:
                 date_key = meal_id_to_date.get(item['meal_id'])
                 if date_key in cal_map:
@@ -263,7 +263,7 @@ async def get_stats(user_id: str = Query(...), days: int = Query(7)):
         
         water_map = { (start_date + timedelta(days=i)).strftime("%Y-%m-%d"): 0.0 for i in range(days) }
         for w in water_data_list:
-            date_key = w['created_at'][:10]
+            date_key = (w.get('created_at') or "")[:10]
             if date_key in water_map:
                 water_map[date_key] += float(w['amount_ml'] or 0)
 
@@ -281,4 +281,5 @@ async def get_stats(user_id: str = Query(...), days: int = Query(7)):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
