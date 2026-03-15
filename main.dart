@@ -1143,6 +1143,7 @@ Widget _buildWaterBottle(double progress) {
               padding: const EdgeInsets.symmetric(horizontal: 10), // تعديل الهامش الجانبي للشارت هنا
               child: LineChart(
                 LineChartData(
+                clipData: FlClipData.all(), // Prevent lines from leaking outside the bounds
                 gridData: FlGridData(show: false),
                 titlesData: FlTitlesData(
                   leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -1171,7 +1172,9 @@ Widget _buildWaterBottle(double progress) {
                   ),
                 ),
                 minX: 0,
-                maxX: (data.length - 1 + (_statsView == "Month" ? 3 : 1)).toDouble(),
+                maxX: data.isEmpty 
+                  ? (_statsView == "Week" ? 7 : 30).toDouble() 
+                  : (data.length - 1 + (_statsView == "Month" ? 3 : 1)).toDouble(),
                 minY: 0,
                 maxY: target * 1.1,
                 borderData: FlBorderData(show: false),
