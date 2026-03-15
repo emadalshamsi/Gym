@@ -62,6 +62,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, double> targets = {"cal": 2000.0, "prot": 150.0, "carb": 250.0, "fat": 70.0, "water": 2000.0};
   Map<String, dynamic> profile = {"full_name": "Emad Alshamsi"};
   int dailyScore = 0;
+  bool isLoading = true;
   List<dynamic> items = [];
   String _statsView = "Week"; // To toggle between Week/Month
   List<dynamic> calStatsData = []; // Real calorie data for chart
