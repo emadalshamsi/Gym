@@ -65,11 +65,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool isLoading = true;
   List<dynamic> items = [];
   String _statsView = "Week"; // To toggle between Week/Month
+  List<dynamic> statsData = []; // Real calorie data for chart
 
   @override
   void initState() {
     super.initState();
     _fetchData();
+    _fetchStats();
   }
 
   Future<void> _fetchData([DateTime? date]) async {
@@ -129,6 +131,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _showError("$errorMsg");
     } finally {
       setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _fetchStats() async {
+    final days = _statsView == "Week" ? 7 : 30;
+    final url = "$baseUrl/get_stats?user_id=$userId&days=$days";
+    try {
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        final data = json.decode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+        setState(() => statsData = data['data'] ?? []);
+      }
+    } catch (e) {
+      debugPrint("Stats fetch error: $e");
     }
   }
 
@@ -1061,7 +1077,10 @@ Widget _buildWaterBottle(double progress) {
         children: ["Week", "Month"].map((view) {
           bool isSelected = _statsView == view;
           return GestureDetector(
-            onTap: () => setState(() => _statsView = view),
+            onTap: () {
+              setState(() => _statsView = view);
+              _fetchStats();
+            },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
               decoration: BoxDecoration(
@@ -1161,13 +1180,21 @@ Widget _buildWaterBottle(double progress) {
 
   List<FlSpot> _getSpots(bool isAchieved) {
     if (_statsView == "Week") {
-      return isAchieved
-          ? [const FlSpot(0, 1800), const FlSpot(1, 2100), const FlSpot(2, 1600), const FlSpot(3, 2200), const FlSpot(4, 1900), const FlSpot(5, 2000), const FlSpot(6, 1700)]
-          : List.generate(7, (i) => FlSpot(i.toDouble(), targets['cal'] ?? 2000));
+      return List.generate(7, (i) {
+        if (!isAchieved) return FlSpot(i.toDouble(), targets['cal'] ?? 2000);
+        if (i < statsData.length) {
+          return FlSpot(i.toDouble(), (statsData[i]['calories'] ?? 0.0).toDouble());
+        }
+        return FlSpot(i.toDouble(), 0);
+      });
     } else {
-      return isAchieved
-          ? List.generate(30, (i) => FlSpot(i.toDouble(), 1800 + (val(i) % 400).toDouble()))
-          : List.generate(30, (i) => FlSpot(i.toDouble(), targets['cal'] ?? 2000));
+      return List.generate(30, (i) {
+        if (!isAchieved) return FlSpot(i.toDouble(), targets['cal'] ?? 2000);
+        if (i < statsData.length) {
+          return FlSpot(i.toDouble(), (statsData[i]['calories'] ?? 0.0).toDouble());
+        }
+        return FlSpot(i.toDouble(), 0);
+      });
     }
   }
 

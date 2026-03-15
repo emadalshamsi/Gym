@@ -237,3 +237,45 @@ async def get_daily_intake(user_id: str = Query(...), date: str = Query(None)):
     except Exception as e:
         logger.error(f"Global Intake Error: {str(e)}")
         return {"error": str(e), "status": "failed"}
+# --- 4. جلب إحصائيات السعرات (Stats) ---
+@app.get("/get_stats")
+async def get_stats(user_id: str = Query(...), days: int = Query(7)):
+    try:
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days - 1)
+        start_str = start_date.strftime("%Y-%m-%d")
+        
+        # جلب الوجبات خلال الفترة
+        meals_res = supabase.table("meals").select("id, created_at").eq("user_id", user_id).gte("created_at", start_str).execute()
+        meals_data = meals_res.data if meals_res.data else []
+        meal_ids = [m['id'] for m in meals_data]
+        
+        # جلب تفاصيل السعرات
+        stats_map = {}
+        # Initialize map with 0s for all days in range
+        for i in range(days):
+            d = (start_date + timedelta(days=i)).strftime("%Y-%m-%d")
+            stats_map[d] = 0.0
+
+        if meal_ids:
+            items_res = supabase.table("meal_items").select("calories, meal_id").in_("meal_id", meal_ids).execute()
+            items_data = items_res.data if items_res.data else []
+            
+            # Map meal_id to date
+            meal_id_to_date = {m['id']: m['created_at'][:10] for m in meals_data}
+            
+            for item in items_data:
+                date_key = meal_id_to_date.get(item['meal_id'])
+                if date_key in stats_map:
+                    stats_map[date_key] += float(item.get('calories') or 0)
+
+        # Convert to sorted list of objects
+        result = [{"date": k, "calories": v} for k, v in sorted(stats_map.items())]
+        return {"status": "success", "data": result}
+    except Exception as e:
+        logger.error(f"Stats Error: {str(e)}")
+        return {"error": str(e), "status": "failed"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
