@@ -1098,7 +1098,7 @@ Widget _buildWaterBottle(double progress) {
   Widget _buildChartCard() {
     return Container(
       padding: const EdgeInsets.all(20),
-      height: 350,
+      height: 260,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -1128,21 +1128,37 @@ Widget _buildWaterBottle(double progress) {
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
+                      interval: 1,
                       getTitlesWidget: (val, meta) {
                         const style = TextStyle(color: Colors.grey, fontSize: 10);
-                        if (_statsView == "Week") {
-                          const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-                          if (val >= 0 && val < 7) return Text(days[val.toInt()], style: style);
-                        } else {
-                          if (val % 5 == 0) return Text("${val.toInt()}", style: style);
+                        int idx = val.toInt();
+                        if (statsData.isEmpty || idx < 0 || idx >= statsData.length) return const Text("");
+                        
+                        try {
+                          final date = DateTime.parse(statsData[idx]['date']);
+                          if (_statsView == "Week") {
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(DateFormat('E').format(date), style: style),
+                            );
+                          } else {
+                            if (idx % 7 == 0) return Text(DateFormat('Md').format(date), style: style);
+                          }
+                        } catch (e) {
+                          return const Text("");
                         }
                         return const Text("");
                       },
                     ),
                   ),
                 ),
+                minX: 0,
+                maxX: (_statsView == "Week" ? 7 : 30).toDouble(),
+                minY: 0,
+                maxY: (targets['cal'] ?? 2000) * 1.1,
                 borderData: FlBorderData(show: false),
                 lineBarsData: [
+                  // Achieved Data
                   LineChartBarData(
                     spots: _getSpots(true), 
                     isCurved: true,
@@ -1151,9 +1167,19 @@ Widget _buildWaterBottle(double progress) {
                     dotData: FlDotData(show: false),
                     belowBarData: BarAreaData(show: true, color: const Color(0xFF4A80F0).withOpacity(0.1)),
                   ),
+                  // Forecast Line (Dashed)
+                  if (statsData.isNotEmpty) LineChartBarData(
+                    spots: _getForecastSpots(),
+                    isCurved: true,
+                    color: const Color(0xFF4A80F0).withOpacity(0.4),
+                    barWidth: 3,
+                    dashArray: [5, 5],
+                    dotData: FlDotData(show: false),
+                  ),
+                  // Target Line
                   LineChartBarData(
                     spots: _getSpots(false), 
-                    isCurved: true,
+                    isCurved: false,
                     color: Colors.grey[300],
                     barWidth: 2,
                     dashArray: [5, 5],
@@ -1179,23 +1205,39 @@ Widget _buildWaterBottle(double progress) {
   }
 
   List<FlSpot> _getSpots(bool isAchieved) {
-    if (_statsView == "Week") {
-      return List.generate(7, (i) {
-        if (!isAchieved) return FlSpot(i.toDouble(), targets['cal'] ?? 2000);
-        if (i < statsData.length) {
-          return FlSpot(i.toDouble(), (statsData[i]['calories'] ?? 0.0).toDouble());
-        }
-        return FlSpot(i.toDouble(), 0);
-      });
-    } else {
-      return List.generate(30, (i) {
-        if (!isAchieved) return FlSpot(i.toDouble(), targets['cal'] ?? 2000);
-        if (i < statsData.length) {
-          return FlSpot(i.toDouble(), (statsData[i]['calories'] ?? 0.0).toDouble());
-        }
-        return FlSpot(i.toDouble(), 0);
-      });
+    int count = _statsView == "Week" ? 7 : 30;
+    return List.generate(count, (i) {
+      if (!isAchieved) return FlSpot(i.toDouble(), targets['cal'] ?? 2000);
+      if (i < statsData.length) {
+        return FlSpot(i.toDouble(), (statsData[i]['calories'] ?? 0.0).toDouble());
+      }
+      return FlSpot(i.toDouble(), 0);
+    });
+  }
+
+  List<FlSpot> _getForecastSpots() {
+    if (statsData.isEmpty) return [];
+    int lastIdx = statsData.length - 1;
+    double lastVal = (statsData[lastIdx]['calories'] ?? 0.0).toDouble();
+    
+    // Average from available non-zero data
+    double sum = 0;
+    int divisor = 0;
+    for (var d in statsData) {
+      double c = (d['calories'] ?? 0).toDouble();
+      if (c > 0) {
+        sum += c;
+        divisor++;
+      }
     }
+    double avg = (divisor > 0) ? sum / divisor : (targets['cal'] ?? 2000);
+    
+    // Forecast is for day count + 1 (today -> tomorrow)
+    // Actually we showing 7 days, so index 6 is today, 7 is tomorrow
+    return [
+      FlSpot(lastIdx.toDouble(), lastVal),
+      FlSpot((lastIdx + 1).toDouble(), avg),
+    ];
   }
 
   int val(int i) => (i * 137 + 42);
