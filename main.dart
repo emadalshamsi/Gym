@@ -1125,7 +1125,7 @@ Widget _buildWaterBottle(double progress) {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1A1A1A))),
+              Text(title, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF1A1A1A))),
               _buildStatsToggle(),
             ],
           ),
@@ -1180,7 +1180,7 @@ Widget _buildWaterBottle(double progress) {
                   ? (_statsView == "Week" ? 7 : 30).toDouble() 
                   : (data.length - 1 + (_statsView == "Month" ? 6 : 1)).toDouble() + 0.2, // Small buffer at end
                 minY: 0,
-                maxY: target * 1.25, // Increased headspace (25%) to prevent peak clipping
+                maxY: target * 1.4, // Increased headspace (25%) to prevent peak clipping
                 borderData: FlBorderData(show: false),
                 lineBarsData: [
                   LineChartBarData(
@@ -1221,9 +1221,9 @@ Widget _buildWaterBottle(double progress) {
   Widget _buildChartLegend(String label, Color color) {
     return Row(
       children: [
-        Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 6),
-        Text(label, style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[600])),
+        Text(label, style: GoogleFonts.inter(fontSize: 10, color: Colors.grey[600])),
       ],
     );
   }
