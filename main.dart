@@ -210,6 +210,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false, // Prevents FAB and other elements from jumping when keyboard appears
       body: Stack(
         children: [
           SafeArea(
@@ -768,12 +769,13 @@ Widget _buildWaterBottle(double progress) {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text("AI Meal Analysis", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-          content: SizedBox(
-            width: 320,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+        scrollable: true, // Allows the dialog to be scrollable when the keyboard is visible
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text("AI Meal Analysis", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        content: SizedBox(
+          width: 320,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButton<String>(
                   value: selectedMealType,
@@ -784,6 +786,7 @@ Widget _buildWaterBottle(double progress) {
                 const SizedBox(height: 15),
                 TextField(
                   controller: queryC, 
+                  autofocus: true, // Opens keyboard immediately
                   decoration: const InputDecoration(
                     labelText: "What did you eat?", 
                     hintText: "e.g. 2 eggs and a coffee",
