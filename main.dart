@@ -1159,7 +1159,7 @@ Widget _buildWaterBottle(double progress) {
                   ),
                 ),
                 minX: 0,
-                maxX: (_statsView == "Week" ? 7 : 30).toDouble(),
+                maxX: (_statsView == "Week" ? 7 + 1 : 30 + 3).toDouble(),
                 minY: 0,
                 maxY: target * 1.1,
                 borderData: FlBorderData(show: false),
@@ -1226,7 +1226,13 @@ Widget _buildWaterBottle(double progress) {
       if (v > 0) { sum += v; divisor++; }
     }
     double avg = (divisor > 0) ? sum / divisor : target;
-    return [FlSpot(lastIdx.toDouble(), lastVal), FlSpot((lastIdx + 1).toDouble(), avg)];
+    
+    int forecastDays = _statsView == "Month" ? 3 : 1;
+    List<FlSpot> spots = [FlSpot(lastIdx.toDouble(), lastVal)];
+    for (int i = 1; i <= forecastDays; i++) {
+      spots.add(FlSpot((lastIdx + i).toDouble(), avg));
+    }
+    return spots;
   }
 
   int val(int i) => (i * 137 + 42);
