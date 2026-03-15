@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 void main() {
   // تفعيل التعامل مع أخطاء الخطوط في الويب لـ Zapp
@@ -63,6 +64,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int dailyScore = 0;
   bool isLoading = true;
   List<dynamic> items = [];
+  String _statsView = "Week"; // To toggle between Week/Month
 
   @override
   void initState() {
@@ -210,31 +212,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false, // Prevents FAB and other elements from jumping when keyboard appears
+      resizeToAvoidBottomInset: true, // Reverting to true for dialogs to work, will handle FAB manually
       body: Stack(
         children: [
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-                  _buildHeader(),
-                  const SizedBox(height: 25),
-                  _buildTodayBar(),
-                  _buildTimeline(),
-                  const SizedBox(height: 20),
-                  _buildCaloriesCard(),
-                  const SizedBox(height: 20),
-                  _buildDiaryHeader(),
-                  const SizedBox(height: 15),
-                  _buildGroupedDiary(),
-                  const SizedBox(height: 120),
-                ],
-              ),
-            ),
-          ),
+          _buildBody(),
           if (isLoading) Container(color: Colors.white70, child: const Center(child: CircularProgressIndicator())),
           if (isMenuOpen) _buildMenuOverlay(),
         ],
@@ -242,6 +223,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: _buildExpandableFab(),
       bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _buildBody() {
+    switch (_currentIndex) {
+      case 0: return _buildDashboard();
+      case 2: return _buildStatsScreen();
+      default: return Center(child: Text("Page ${_currentIndex + 1}", style: GoogleFonts.inter(fontSize: 18)));
+    }
+  }
+
+  Widget _buildDashboard() {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 20),
+            _buildHeader(),
+            const SizedBox(height: 25),
+            _buildTodayBar(),
+            _buildTimeline(),
+            const SizedBox(height: 20),
+            _buildCaloriesCard(),
+            const SizedBox(height: 20),
+            _buildDiaryHeader(),
+            const SizedBox(height: 15),
+            _buildGroupedDiary(),
+            const SizedBox(height: 120),
+          ],
+        ),
+      ),
     );
   }
 
