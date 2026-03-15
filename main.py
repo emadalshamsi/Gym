@@ -47,7 +47,6 @@ def get_ai_nutrition_estimate(food_query):
         logger.error("خطأ: GEMINI_API_KEY غير مضبوط!")
         return {"cal": 0, "prot": 0, "carb": 0, "fat": 0, "weight": 0}, {"error": "Key missing"}
 
-    # استعادة نسخة الموديل التي كانت تعمل بشكل سليم
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
     
     prompt = (
@@ -98,7 +97,6 @@ async def log_meal(data: MealLogRequest):
     meal_type = data.meal_type
     items_ar = data.items_ar
     log_time = data.date if data.date else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    logger.info(f"Logging meal: {meal_type} for {user_id} at {log_time}")
     
     try:
         meal_res = supabase.table("meals").insert({
@@ -161,7 +159,6 @@ async def log_water(data: WaterLogRequest):
     user_id = data.user_id
     amount_ml = data.amount_ml
     log_time = data.date if data.date else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    logger.info(f"Logging water: {amount_ml}ml for {user_id} at {log_time}")
     try:
         data = {
             "user_id": user_id, 
@@ -196,13 +193,12 @@ async def get_daily_intake(user_id: str = Query(...), date: str = Query(None)):
             "water": profile.get("daily_water_target_ml", 2000)
         }
         
-        # جلب الوجبات وتفاصيلها
+        # جلب الوجبات
         meals = supabase.table("meals").select("id").eq("user_id", user_id).gte("created_at", target_date).lt("created_at", next_day).execute()
         meal_ids = [m['id'] for m in (meals.data if meals.data else [])]
         
         items_data = []
         if meal_ids:
-            # Fetch meal items joined with their meal type
             items_res = supabase.table("meal_items").select("*, meals(meal_type)").in_("meal_id", meal_ids).execute()
             items_data = items_res.data if items_res.data else []
         
@@ -219,7 +215,6 @@ async def get_daily_intake(user_id: str = Query(...), date: str = Query(None)):
             "water": water_total
         }
 
-        # قائمة الوجبات المفصلة للعرض في الواجهة
         items_list = [
             {
                 "id": i.get("id", ""),
@@ -237,7 +232,8 @@ async def get_daily_intake(user_id: str = Query(...), date: str = Query(None)):
     except Exception as e:
         logger.error(f"Global Intake Error: {str(e)}")
         return {"error": str(e), "status": "failed"}
-# --- 4. جلب إحصائيات السعرات (Stats) ---
+
+# --- 4. جلب إحصائيات السعرات والمياه (Stats) ---
 @app.get("/get_stats")
 async def get_stats(user_id: str = Query(...), days: int = Query(7)):
     try:
@@ -245,33 +241,40 @@ async def get_stats(user_id: str = Query(...), days: int = Query(7)):
         start_date = end_date - timedelta(days=days - 1)
         start_str = start_date.strftime("%Y-%m-%d")
         
-        # جلب الوجبات خلال الفترة
+        # 1. جلب إحصائيات السعرات
         meals_res = supabase.table("meals").select("id, created_at").eq("user_id", user_id).gte("created_at", start_str).execute()
         meals_data = meals_res.data if meals_res.data else []
         meal_ids = [m['id'] for m in meals_data]
         
-        # جلب تفاصيل السعرات
-        stats_map = {}
-        # Initialize map with 0s for all days in range
-        for i in range(days):
-            d = (start_date + timedelta(days=i)).strftime("%Y-%m-%d")
-            stats_map[d] = 0.0
+        cal_map = { (start_date + timedelta(days=i)).strftime("%Y-%m-%d"): 0.0 for i in range(days) }
 
         if meal_ids:
             items_res = supabase.table("meal_items").select("calories, meal_id").in_("meal_id", meal_ids).execute()
             items_data = items_res.data if items_res.data else []
-            
-            # Map meal_id to date
             meal_id_to_date = {m['id']: m['created_at'][:10] for m in meals_data}
-            
             for item in items_data:
                 date_key = meal_id_to_date.get(item['meal_id'])
-                if date_key in stats_map:
-                    stats_map[date_key] += float(item.get('calories') or 0)
+                if date_key in cal_map:
+                    cal_map[date_key] += float(item.get('calories') or 0)
 
-        # Convert to sorted list of objects
-        result = [{"date": k, "calories": v} for k, v in sorted(stats_map.items())]
-        return {"status": "success", "data": result}
+        # 2. جلب إحصائيات المياه
+        water_res = supabase.table("water_logs").select("amount_ml, created_at").eq("user_id", user_id).gte("created_at", start_str).execute()
+        water_data_list = water_res.data if water_res.data else []
+        
+        water_map = { (start_date + timedelta(days=i)).strftime("%Y-%m-%d"): 0.0 for i in range(days) }
+        for w in water_data_list:
+            date_key = w['created_at'][:10]
+            if date_key in water_map:
+                water_map[date_key] += float(w['amount_ml'] or 0)
+
+        cal_result = [{"date": k, "value": v} for k, v in sorted(cal_map.items())]
+        water_result = [{"date": k, "value": v} for k, v in sorted(water_map.items())]
+        
+        return {
+            "status": "success", 
+            "calories": cal_result,
+            "water": water_result
+        }
     except Exception as e:
         logger.error(f"Stats Error: {str(e)}")
         return {"error": str(e), "status": "failed"}

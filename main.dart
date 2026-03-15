@@ -62,10 +62,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, double> targets = {"cal": 2000.0, "prot": 150.0, "carb": 250.0, "fat": 70.0, "water": 2000.0};
   Map<String, dynamic> profile = {"full_name": "Emad Alshamsi"};
   int dailyScore = 0;
-  bool isLoading = true;
   List<dynamic> items = [];
   String _statsView = "Week"; // To toggle between Week/Month
-  List<dynamic> statsData = []; // Real calorie data for chart
+  List<dynamic> calStatsData = []; // Real calorie data for chart
+  List<dynamic> waterStatsData = []; // Real water data for chart
 
   @override
   void initState() {
@@ -141,7 +141,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-        setState(() => statsData = data['data'] ?? []);
+        setState(() {
+          calStatsData = data['calories'] ?? [];
+          waterStatsData = data['water'] ?? [];
+        });
       }
     } catch (e) {
       debugPrint("Stats fetch error: $e");
@@ -1052,7 +1055,7 @@ Widget _buildWaterBottle(double progress) {
 
   Widget _buildStatsScreen() {
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1060,9 +1063,10 @@ Widget _buildWaterBottle(double progress) {
             const SizedBox(height: 20),
             Text("Statistics", style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w900, color: const Color(0xFF1A1A1A))),
             const SizedBox(height: 20),
-            _buildStatsToggle(),
-            const SizedBox(height: 30),
-            _buildChartCard(),
+            _buildChartCard("Calorie Intake", calStatsData, targets['cal'] ?? 2000, const Color(0xFF4A80F0)),
+            const SizedBox(height: 20),
+            _buildChartCard("Water Intake", waterStatsData, (targets['water'] ?? 2000).toDouble(), const Color(0xFF4AC2A4)),
+            const SizedBox(height: 100), // Extra space for FAB
           ],
         ),
       ),
@@ -1071,7 +1075,7 @@ Widget _buildWaterBottle(double progress) {
 
   Widget _buildStatsToggle() {
     return Container(
-      decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(15)),
+      decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(10)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: ["Week", "Month"].map((view) {
@@ -1082,12 +1086,12 @@ Widget _buildWaterBottle(double progress) {
               _fetchStats();
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: isSelected ? const Color(0xFF4A80F0) : Colors.transparent,
-                borderRadius: BorderRadius.circular(15),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Text(view, style: GoogleFonts.inter(color: isSelected ? Colors.white : Colors.grey[600], fontWeight: FontWeight.bold)),
+              child: Text(view, style: GoogleFonts.inter(fontSize: 10, color: isSelected ? Colors.white : Colors.grey[600], fontWeight: FontWeight.bold)),
             ),
           );
         }).toList(),
@@ -1095,9 +1099,9 @@ Widget _buildWaterBottle(double progress) {
     );
   }
 
-  Widget _buildChartCard() {
+  Widget _buildChartCard(String title, List<dynamic> data, double target, Color themeColor) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       height: 260,
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1107,16 +1111,22 @@ Widget _buildWaterBottle(double progress) {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Calorie Intake Chart", style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1A1A1A))),
-          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(title, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1A1A1A))),
+              _buildStatsToggle(),
+            ],
+          ),
+          const SizedBox(height: 8),
           Row(
             children: [
-              _buildChartLegend("Achieved", const Color(0xFF4A80F0)),
+              _buildChartLegend("Achieved", themeColor),
               const SizedBox(width: 15),
               _buildChartLegend("Target", Colors.grey[300]!),
             ],
           ),
-          const SizedBox(height: 25),
+          const SizedBox(height: 20),
           Expanded(
             child: LineChart(
               LineChartData(
@@ -1132,21 +1142,16 @@ Widget _buildWaterBottle(double progress) {
                       getTitlesWidget: (val, meta) {
                         const style = TextStyle(color: Colors.grey, fontSize: 10);
                         int idx = val.toInt();
-                        if (statsData.isEmpty || idx < 0 || idx >= statsData.length) return const Text("");
+                        if (data.isEmpty || idx < 0 || idx >= data.length) return const Text("");
                         
                         try {
-                          final date = DateTime.parse(statsData[idx]['date']);
+                          final date = DateTime.parse(data[idx]['date']);
                           if (_statsView == "Week") {
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: Text(DateFormat('E').format(date), style: style),
-                            );
+                            return Padding(padding: const EdgeInsets.only(top: 8.0), child: Text(DateFormat('E').format(date), style: style));
                           } else {
                             if (idx % 7 == 0) return Text(DateFormat('Md').format(date), style: style);
                           }
-                        } catch (e) {
-                          return const Text("");
-                        }
+                        } catch (e) {}
                         return const Text("");
                       },
                     ),
@@ -1155,30 +1160,27 @@ Widget _buildWaterBottle(double progress) {
                 minX: 0,
                 maxX: (_statsView == "Week" ? 7 : 30).toDouble(),
                 minY: 0,
-                maxY: (targets['cal'] ?? 2000) * 1.1,
+                maxY: target * 1.1,
                 borderData: FlBorderData(show: false),
                 lineBarsData: [
-                  // Achieved Data
                   LineChartBarData(
-                    spots: _getSpots(true), 
+                    spots: _getSpots(data, target, true), 
                     isCurved: true,
-                    color: const Color(0xFF4A80F0),
+                    color: themeColor,
                     barWidth: 4,
                     dotData: FlDotData(show: false),
-                    belowBarData: BarAreaData(show: true, color: const Color(0xFF4A80F0).withOpacity(0.1)),
+                    belowBarData: BarAreaData(show: true, color: themeColor.withOpacity(0.1)),
                   ),
-                  // Forecast Line (Dashed)
-                  if (statsData.isNotEmpty) LineChartBarData(
-                    spots: _getForecastSpots(),
+                  if (data.isNotEmpty) LineChartBarData(
+                    spots: _getForecastSpots(data, target),
                     isCurved: true,
-                    color: const Color(0xFF4A80F0).withOpacity(0.4),
+                    color: themeColor.withOpacity(0.4),
                     barWidth: 3,
                     dashArray: [5, 5],
                     dotData: FlDotData(show: false),
                   ),
-                  // Target Line
                   LineChartBarData(
-                    spots: _getSpots(false), 
+                    spots: _getSpots(data, target, false), 
                     isCurved: false,
                     color: Colors.grey[300],
                     barWidth: 2,
@@ -1204,40 +1206,26 @@ Widget _buildWaterBottle(double progress) {
     );
   }
 
-  List<FlSpot> _getSpots(bool isAchieved) {
+  List<FlSpot> _getSpots(List<dynamic> data, double target, bool isAchieved) {
     int count = _statsView == "Week" ? 7 : 30;
     return List.generate(count, (i) {
-      if (!isAchieved) return FlSpot(i.toDouble(), targets['cal'] ?? 2000);
-      if (i < statsData.length) {
-        return FlSpot(i.toDouble(), (statsData[i]['calories'] ?? 0.0).toDouble());
-      }
+      if (!isAchieved) return FlSpot(i.toDouble(), target);
+      if (i < data.length) return FlSpot(i.toDouble(), (data[i]['value'] ?? 0.0).toDouble());
       return FlSpot(i.toDouble(), 0);
     });
   }
 
-  List<FlSpot> _getForecastSpots() {
-    if (statsData.isEmpty) return [];
-    int lastIdx = statsData.length - 1;
-    double lastVal = (statsData[lastIdx]['calories'] ?? 0.0).toDouble();
-    
-    // Average from available non-zero data
-    double sum = 0;
-    int divisor = 0;
-    for (var d in statsData) {
-      double c = (d['calories'] ?? 0).toDouble();
-      if (c > 0) {
-        sum += c;
-        divisor++;
-      }
+  List<FlSpot> _getForecastSpots(List<dynamic> data, double target) {
+    if (data.isEmpty) return [];
+    int lastIdx = data.length - 1;
+    double lastVal = (data[lastIdx]['value'] ?? 0.0).toDouble();
+    double sum = 0; int divisor = 0;
+    for (var d in data) {
+      double v = (d['value'] ?? 0).toDouble();
+      if (v > 0) { sum += v; divisor++; }
     }
-    double avg = (divisor > 0) ? sum / divisor : (targets['cal'] ?? 2000);
-    
-    // Forecast is for day count + 1 (today -> tomorrow)
-    // Actually we showing 7 days, so index 6 is today, 7 is tomorrow
-    return [
-      FlSpot(lastIdx.toDouble(), lastVal),
-      FlSpot((lastIdx + 1).toDouble(), avg),
-    ];
+    double avg = (divisor > 0) ? sum / divisor : target;
+    return [FlSpot(lastIdx.toDouble(), lastVal), FlSpot((lastIdx + 1).toDouble(), avg)];
   }
 
   int val(int i) => (i * 137 + 42);
