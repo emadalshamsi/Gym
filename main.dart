@@ -866,10 +866,10 @@ Widget _buildWaterBottle(double progress) {
                 text: TextSpan(
                   style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[500]),
                   children: [
-                    TextSpan(text: "${totalCal.round()} cal • ", style: const TextStyle(color:const Color(0xFF4A80F0), fontWeight: FontWeight.bold)),
-                    TextSpan(text: "P ${totalP.round()}g  ", style: const TextStyle(color: Color(0xFFF39C12), fontWeight: FontWeight.bold)),
-                    TextSpan(text: "C ${totalC.round()}g  ", style: const TextStyle(color: Color(0xFF4AC2A4), fontWeight: FontWeight.bold)),
-                    TextSpan(text: "F ${totalF.round()}g", style: const TextStyle(color: Color(0xFF8E44AD), fontWeight: FontWeight.bold)),
+                    TextSpan(text: "${totalCal.round()} cal • ", style: GoogleFonts.inter(color: const Color(0xFF4A80F0), fontWeight: FontWeight.bold)),
+                    TextSpan(text: "P ${totalP.round()}g  ", style: GoogleFonts.inter(color: const Color(0xFFF39C12), fontWeight: FontWeight.bold)),
+                    TextSpan(text: "C ${totalC.round()}g  ", style: GoogleFonts.inter(color: const Color(0xFF4AC2A4), fontWeight: FontWeight.bold)),
+                    TextSpan(text: "F ${totalF.round()}g", style: GoogleFonts.inter(color: const Color(0xFF8E44AD), fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
