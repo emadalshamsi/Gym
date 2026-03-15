@@ -3,17 +3,18 @@
    width="24"
    height="24"
    viewBox="0 0 24 24"
-   fill="#ffffff"
+   fill="none"
    version="1.1"
    id="svg7"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
+  
   <path
-     style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;fill:#ffffff;stroke-linejoin:round;enable-background:accumulate;stop-color:#000000;stroke:none;fill-opacity:1.0;"
+     style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;fill:#ffffff;stroke-linejoin:round;enable-background:accumulate;stop-color:#000000;stroke:none;fill-opacity:1;opacity:0.4"
      d="m 5,7 h 14 v 2.69819 c 0,2.86431 -0.2033,5.72491 -0.6084,8.56041 l -0.0867,0.6072 c -0.1816,1.2708 -1.1652,2.2776 -2.4314,2.4886 -2.5647,0.4275 -5.1823,0.4275 -7.74698,0 -1.2662,-0.211 -2.24987,-1.2178 -2.4314,-2.4886 L 5.60837,18.2586 C 5.2033,15.4231 5,12.5625 5,9.69819 Z"
      id="path8" />
   <path
-     style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;fill:#ffffff;stroke-linejoin:round;enable-background:accumulate;stop-color:#000000;stroke:none;fill-opacity:1.0;"
+     style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;fill:#ffffff;stroke-linejoin:round;enable-background:accumulate;stop-color:#000000;stroke:none;fill-opacity:1;opacity:0.4"
      d="M 3.58357,3.83285 C 3.84373,3.31253 4.34672,2.95666 4.92397,2.8845 L 6.39834,2.70021 c 3.71996,-0.465 7.48336,-0.465 11.20336,0 L 19.076,2.8845 c 0.5773,0.07216 1.0803,0.42803 1.3404,0.94835 l 0.0354,0.07069 c 0.3451,0.69024 0.3451,1.50268 0,2.19292 C 20.1749,6.65021 19.6089,7 18.9898,7 H 5.01018 C 4.39108,7 3.82511,6.65021 3.54823,6.09646 3.20311,5.40622 3.20311,4.59378 3.54823,3.90354 Z"
      id="path10" />
   <path

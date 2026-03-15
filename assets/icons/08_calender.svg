@@ -3,20 +3,19 @@
    width="24"
    height="24"
    viewBox="0 0 24 24"
-   fill="#ffffff"
+   fill="none"
    version="1.1"
    id="svg7"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
-  <defs
-     id="defs7" />
+  
   <path
      d="M3.57043 7.50351C3.84062 6.55784 4.54322 5.79629 5.46411 5.45096C9.6781 3.87071 14.3219 3.87071 18.5359 5.45096C19.4568 5.79629 20.1594 6.55783 20.4296 7.50351L20.6714 8.34998C21.5398 11.3892 21.5398 14.6108 20.6714 17.65L20.6298 17.7958C20.2401 19.1597 19.1521 20.212 17.776 20.556C13.9837 21.5041 10.0163 21.5041 6.224 20.556C4.84785 20.212 3.75991 19.1597 3.37022 17.7958L3.32858 17.65C2.46023 14.6108 2.46023 11.3892 3.32858 8.34998L3.57043 7.50351Z"
-     stroke="#ffffff"
+     stroke="#111214"
      stroke-width="2"
      stroke-linejoin="round"
      id="path8"
-     style="fill:#ffffff;fill-opacity:1.0;stroke:none;opacity:1.0" />
+     style="fill:#ffffff;fill-opacity:1;stroke:none;opacity:0.4" />
   <path
      id="path10"
      style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;fill:#ffffff;stroke-linejoin:round;enable-background:accumulate;stop-color:#000000;stroke:none;fill-opacity:1"

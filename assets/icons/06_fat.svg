@@ -3,27 +3,26 @@
    width="24"
    height="24"
    viewBox="0 0 24 24"
-   fill="#ffffff"
+   fill="none"
    version="1.1"
    id="svg3"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
-  <defs
-     id="defs3" />
+  
   <g
      id="path1"
      style="opacity:1">
     <path
-       style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;fill:#ffffff;fill-opacity:1.0;stroke-linejoin:round;enable-background:accumulate;stop-color:#000000;stop-opacity:1;opacity:1.0"
+       style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;fill:#8e44ad;fill-opacity:1;stroke-linejoin:round;enable-background:accumulate;stop-color:#000000;stop-opacity:1;opacity:0.4"
        d="M 5.43035,11.8483 C 5.79897,10.0051 6.78747,8.34378 8.23142,7.14048 L 12,4 15.7686,7.14048 c 1.4439,1.2033 2.4324,2.86462 2.8011,4.70782 l 0.1155,0.5775 c 0.2078,1.0392 0.2078,2.1092 0,3.1484 l -0.108,0.5396 c -0.3569,1.7848 -1.6428,3.2414 -3.3695,3.817 -2.0821,0.694 -4.3333,0.694 -6.41543,0 C 7.0656,19.3552 5.77971,17.8986 5.42277,16.1138 L 5.31484,15.5742 c -0.20783,-1.0392 -0.20784,-2.1092 0,-3.1484 z"
        id="path4" />
     <path
-       style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;fill:#ffffff;stroke-linejoin:round;enable-background:accumulate;stop-color:#000000;stop-opacity:1;fill-opacity:1"
+       style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;fill:#8e44ad;stroke-linejoin:round;enable-background:accumulate;stop-color:#000000;stop-opacity:1;fill-opacity:1"
        d="M 11.359375,3.2324219 7.5917969,6.3730469 C 5.9725274,7.7224474 4.8625964,9.5853433 4.4492187,11.652344 l -0.1152343,0.578125 c -0.2337295,1.168647 -0.2337148,2.370432 0,3.539062 l 0.1074218,0.541016 c 0.426992,2.135079 1.9696264,3.879797 4.0351563,4.568359 2.2872645,0.762374 4.7596355,0.762377 7.0468755,0 2.065557,-0.688559 3.608208,-2.43326 4.035156,-4.568359 l 0.107422,-0.541016 c 0.233679,-1.168619 0.233679,-2.370443 0,-3.539062 L 19.550781,11.652344 C 19.13732,9.5853735 18.027415,7.7224463 16.408203,6.3730469 l -3.767578,-3.140625 a 1.0001,1.0001 0 0 0 -1.28125,0 z M 12,5.3007812 15.128906,7.9082031 c 1.268588,1.0572006 2.136999,2.5172889 2.460938,4.1367189 l 0.115234,0.576172 c 0.181921,0.90978 0.181921,1.848032 0,2.757812 l -0.109375,0.539063 c -0.286852,1.434501 -1.317235,2.601812 -2.705078,3.064453 -1.876961,0.625623 -3.904254,0.625626 -5.78125,0 C 7.7215649,18.519784 6.6911849,17.352489 6.4042969,15.917969 l -0.109375,-0.539063 c -0.1819453,-0.90977 -0.1819505,-1.84806 0,-2.757812 l 0.1152343,-0.576172 c 0.3238624,-1.6194 1.192307,-3.0795194 2.4609376,-4.1367189 z"
        id="path5" />
   </g>
   <path
      id="path3"
-     style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;fill:#ffffff;stroke-linejoin:round;enable-background:accumulate;stop-color:#000000;stop-opacity:1;opacity:1;fill-opacity:1"
+     style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;fill:#8e44ad;stroke-linejoin:round;enable-background:accumulate;stop-color:#000000;stop-opacity:1;opacity:1;fill-opacity:1"
      d="m 9,12.5 v 1 h 6 v -1 z M 11.5,10 v 6 h 1 v -6 z" />
 </svg>
