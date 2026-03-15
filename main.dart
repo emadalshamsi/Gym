@@ -1083,7 +1083,11 @@ Widget _buildWaterBottle(double progress) {
           bool isSelected = _statsView == view;
           return GestureDetector(
             onTap: () {
-              setState(() => _statsView = view);
+              setState(() {
+                _statsView = view;
+                calStatsData = [];
+                waterStatsData = [];
+              });
               _fetchStats();
             },
             child: Container(
@@ -1192,9 +1196,11 @@ Widget _buildWaterBottle(double progress) {
                   ),
                 ],
               ),
+              duration: Duration.zero, // Disable animation to prevent "stretching" glitch
             ),
           ),
         ),
+      ),
         ],
       ),
     );
