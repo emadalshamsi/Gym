@@ -857,7 +857,7 @@ Widget _buildWaterBottle(double progress) {
               leading: Container(
                 padding: const EdgeInsets.all(8), // Reduced from 10
                 decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                child: SvgPicture.asset('assets/icons/$type.svg', width: 28, height: 28, // Slightly larger base
+                child: SvgPicture.asset('assets/icons/$type.svg', width: 27, height: 27, // Slightly larger base
                   fit: BoxFit.contain, // Ensures no cropping on iPhone
                   placeholderBuilder: (context) => Icon(Icons.restaurant, color: color)),
               ),
@@ -866,9 +866,9 @@ Widget _buildWaterBottle(double progress) {
                 text: TextSpan(
                   style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[500]),
                   children: [
-                    TextSpan(text: "${totalCal.round()} cal • "),
-                    TextSpan(text: "P ${totalP.round()}g ", style: const TextStyle(color: Color(0xFFF39C12), fontWeight: FontWeight.bold)),
-                    TextSpan(text: "C ${totalC.round()}g ", style: const TextStyle(color: Color(0xFF4AC2A4), fontWeight: FontWeight.bold)),
+                    TextSpan(text: "${totalCal.round()} cal • ", style: const TextStyle(color:const Color(0xFF4A80F0), fontWeight: FontWeight.bold)),
+                    TextSpan(text: "P ${totalP.round()}g  ", style: const TextStyle(color: Color(0xFFF39C12), fontWeight: FontWeight.bold)),
+                    TextSpan(text: "C ${totalC.round()}g  ", style: const TextStyle(color: Color(0xFF4AC2A4), fontWeight: FontWeight.bold)),
                     TextSpan(text: "F ${totalF.round()}g", style: const TextStyle(color: Color(0xFF8E44AD), fontWeight: FontWeight.bold)),
                   ],
                 ),
@@ -899,12 +899,12 @@ Widget _buildWaterBottle(double progress) {
                             placeholderBuilder: (_) => Icon(Icons.edit, size: 20, color: Colors.grey[800])),
                         ),
                       ),
-                      const SizedBox(width: 2), // ADJUST THIS NUMBER for space between edit and delete
+                      const SizedBox(width: 1), // ADJUST THIS NUMBER for space between edit and delete
                       GestureDetector(
                         onTap: () => _deleteMealItem(item['id']),
                         child: Container(
                           padding: const EdgeInsets.all(8),
-                          child: SvgPicture.asset('assets/icons/delete.svg', width: 20, height: 20, 
+                          child: SvgPicture.asset('assets/icons/delete.svg', width: 19, height: 19, 
                             placeholderBuilder: (_) => Icon(Icons.delete, size: 20, color: Colors.grey[800])),
                         ),
                       ),
@@ -1016,4 +1016,3 @@ Widget _buildWaterBottle(double progress) {
   }
 
 }
-
