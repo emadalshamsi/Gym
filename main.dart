@@ -269,8 +269,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             const SizedBox(height: 20),
             _buildHeader(),
-            const SizedBox(height: 25),
-            _buildTodayBar(),
+            const SizedBox(height: 15),
             _buildTimeline(),
             const SizedBox(height: 20),
             _buildCaloriesCard(),
@@ -312,76 +311,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ],
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(color: const Color(0xFF4A80F0).withOpacity(0.1), borderRadius: BorderRadius.circular(15)),
-          child: Text(
-            DateFormat('MMM yyyy').format(selectedDate),
-            style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF4A80F0)),
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              (dailyScore / 10).toStringAsFixed(1),
+              style: GoogleFonts.inter(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: const Color(0xFFFFB800),
+              ),
+            ),
+            const SizedBox(width: 6),
+            SvgPicture.asset(
+              'assets/icons/01_spark.svg',
+              width: 20,
+              height: 20,
+              color: const Color(0xFFFFB800),
+              colorBlendMode: BlendMode.srcIn,
+            )
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildTodayBar() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              "Today",
-              style: GoogleFonts.inter(
-                fontSize: 32,
-                fontWeight: FontWeight.w900,
-                color: const Color(0xFF1A1A1A),
-              ),
-            ),
-            Row(
-              children: [
-                Text(
-                  (dailyScore / 10).toStringAsFixed(1),
-                  style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: const Color(0xFFFFB800),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                // 2. Replace the Icon widget with this:
-                SvgPicture.asset(
-                  'assets/icons/01_spark.svg',
-                  width: 20,
-                  height: 20,
-                  color: const Color(0xFFFFB800),
-                  colorBlendMode: BlendMode.srcIn,
-                )
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: List.generate(10, (index) {
-            bool active = (index * 10) < dailyScore;
-            return Expanded(
-              child: Container(
-                height: 4,
-                margin: const EdgeInsets.symmetric(horizontal: 2),
-                decoration: BoxDecoration(
-                  color: active ? const Color(0xFFFFB800) : Colors.grey[200]!,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            );
-          }),
-        ),
-      ],
-    );
-  }
 
   Widget _buildTimeline() {
     return Container(
