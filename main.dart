@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Gym App',
       theme: ThemeData(
-        textTheme: GoogleFonts.interTextTheme(),
+        textTheme: GoogleFonts.workSansTextTheme(),
         primaryColor: const Color(0xFF4A80F0),
         scaffoldBackgroundColor: const Color(0xFFF5F9FF),
       ),
@@ -256,7 +256,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     switch (_currentIndex) {
       case 0: return _buildDashboard();
       case 2: return _buildStatsScreen();
-      default: return Center(child: Text("Page ${_currentIndex + 1}", style: GoogleFonts.inter(fontSize: 18)));
+      default: return Center(child: Text("Page ${_currentIndex + 1}", style: GoogleFonts.workSans(fontSize: 18)));
     }
   }
 
@@ -301,11 +301,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Text(
                   profile['full_name'] ?? "User",
-                  style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: GoogleFonts.workSans(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Text(
                   "Goal: ${(targets['cal'] ?? 2000).round()} cal",
-                  style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[600]),
+                  style: GoogleFonts.workSans(fontSize: 13, color: Colors.grey[600]),
                 ),
               ],
             ),
@@ -316,7 +316,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             Text(
               (dailyScore / 10).toStringAsFixed(1),
-              style: GoogleFonts.inter(
+              style: GoogleFonts.workSans(
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
                 color: const Color(0xFFFFB800),
@@ -362,7 +362,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         Text(
                           DateFormat('E').format(day)[0],
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.workSans(
                             color: isSelected ? Colors.white : Colors.grey[600],
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
@@ -371,7 +371,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         const SizedBox(height: 6),
                         Text(
                           day.day.toString(),
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.workSans(
                             color: isSelected ? Colors.white : Colors.grey[600],
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -426,9 +426,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(width: 8), // Add some space between icon and text
                     Text("${(totals['cal'] ?? 0).round()} cal", 
-                        style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w900)),
+                        style: GoogleFonts.workSans(fontSize: 22, fontWeight: FontWeight.w900)),
                     Text(" / ${(targets['cal'] ?? 0).round()}", 
-                        style: GoogleFonts.inter(fontSize: 14, color: Colors.grey)),
+                        style: GoogleFonts.workSans(fontSize: 14, color: Colors.grey)),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -486,7 +486,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               colorBlendMode: BlendMode.srcIn,
             ),
              const SizedBox(width: 6),
-            Text(label, style: GoogleFonts.inter(fontSize: 11, color: Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.w600)),
+            Text(label, style: GoogleFonts.workSans(fontSize: 11, color: Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.w600)),
           ],
         ),
         const SizedBox(height: 6),
@@ -505,7 +505,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 TextSpan(
                   text: "${taken.toInt()}g",
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.workSans(
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
                     color: (target * 1.1 - taken) > 0 ? Colors.black : Colors.red, // Changed to black
@@ -513,7 +513,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 TextSpan(
                   text: " / ${((target - taken) > 0 ? (target - taken).toInt() : 0)}g left",
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.workSans(
                     fontSize: 8,
                     fontWeight: FontWeight.normal,
                     color: (target * 1.1 - taken) > 0 ? Colors.grey : Colors.grey, // Optionally turn red when over
@@ -542,10 +542,10 @@ Widget _buildWaterBottle(double progress) {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text("Water",
-              style: GoogleFonts.inter(
+              style: GoogleFonts.workSans(
                   color: waterColor, fontSize: 8, fontWeight: FontWeight.w600)),
           Text(formattedGoal, // Displays "2.00 Ltr"
-              style: GoogleFonts.inter(
+              style: GoogleFonts.workSans(
                   color: Colors.blueGrey.shade300, 
                   fontSize: 8, 
                   fontWeight: FontWeight.w500)),
@@ -597,7 +597,7 @@ Widget _buildWaterBottle(double progress) {
                 ),
                 child: Text(
                   "${currentLogLiters.toStringAsFixed(2)} L",
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.workSans(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                     color:  Color.fromARGB(255, 0, 0, 0),
@@ -617,10 +617,10 @@ Widget _buildWaterBottle(double progress) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text("Diary", style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800)),
+        Text("Diary", style: GoogleFonts.workSans(fontSize: 22, fontWeight: FontWeight.w800)),
         TextButton(
           onPressed: _testConnection,
-          child: Text("Test Connect", style: GoogleFonts.inter(color: const Color(0xFF4A80F0), fontWeight: FontWeight.w600)),
+          child: Text("Test Connect", style: GoogleFonts.workSans(color: const Color(0xFF4A80F0), fontWeight: FontWeight.w600)),
         ),
       ],
     );
@@ -643,10 +643,10 @@ Widget _buildWaterBottle(double progress) {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 17)),
+                Text(title, style: GoogleFonts.workSans(fontWeight: FontWeight.bold, fontSize: 17)),
                 const SizedBox(height: 2),
-                Text(subtitle, style: GoogleFonts.inter(color: Colors.grey[500], fontSize: 13)),
-                Text("$cal • $details", style: GoogleFonts.inter(color: Colors.grey[400], fontSize: 11)),
+                Text(subtitle, style: GoogleFonts.workSans(color: Colors.grey[500], fontSize: 13)),
+                Text("$cal • $details", style: GoogleFonts.workSans(color: Colors.grey[400], fontSize: 11)),
               ],
             ),
           ),
@@ -699,7 +699,7 @@ Widget _buildWaterBottle(double progress) {
               children: [
                 Icon(icon, color: color, size: 20),
                 const SizedBox(width: 10),
-                Text(label, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15, color: const Color(0xFF1A1A1A))),
+                Text(label, style: GoogleFonts.workSans(fontWeight: FontWeight.bold, fontSize: 15, color: const Color(0xFF1A1A1A))),
               ],
             ),
           ),
@@ -721,12 +721,12 @@ Widget _buildWaterBottle(double progress) {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text("Log Water Intake", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        title: Text("Log Water Intake", style: GoogleFonts.workSans(fontWeight: FontWeight.bold)),
         content: StatefulBuilder(builder: (c, setS) {
           return Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text("${amount}ml", style: GoogleFonts.inter(fontSize: 32, fontWeight: FontWeight.w900, color: const Color(0xFF4A80F0))),
+              Text("${amount}ml", style: GoogleFonts.workSans(fontSize: 32, fontWeight: FontWeight.w900, color: const Color(0xFF4A80F0))),
               const SizedBox(height: 20),
               Slider(
                 value: amount.toDouble(),
@@ -735,7 +735,7 @@ Widget _buildWaterBottle(double progress) {
                 divisions: 20,
                 onChanged: (double v) => setS(() => amount = v.toInt()),
               ),
-              Text("Drag to adjust", style: GoogleFonts.inter(fontSize: 12, color: Colors.grey)),
+              Text("Drag to adjust", style: GoogleFonts.workSans(fontSize: 12, color: Colors.grey)),
             ],
           );
         }),
@@ -766,7 +766,7 @@ Widget _buildWaterBottle(double progress) {
         insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         scrollable: true,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text("AI Meal Analysis", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        title: Text("AI Meal Analysis", style: GoogleFonts.workSans(fontWeight: FontWeight.bold)),
         content: Container(
           constraints: const BoxConstraints(maxWidth: 400),
           child: Column(
@@ -860,15 +860,15 @@ Widget _buildWaterBottle(double progress) {
                   fit: BoxFit.contain,
                   placeholderBuilder: (context) => Icon(Icons.restaurant, color: color)),
               ),
-              title: Text(type, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 17, color: color)),
+              title: Text(type, style: GoogleFonts.workSans(fontWeight: FontWeight.bold, fontSize: 17, color: color)),
               subtitle: RichText(
                 text: TextSpan(
-                  style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[500]),
+                  style: GoogleFonts.workSans(fontSize: 11, color: Colors.grey[500]),
                   children: [
-                    TextSpan(text: "${totalCal.round()} cal • ", style: GoogleFonts.inter(color: const Color(0xFF4A80F0), fontWeight: FontWeight.bold)),
-                    TextSpan(text: "P ${totalP.round()}g  ", style: GoogleFonts.inter(color: const Color(0xFFF39C12), fontWeight: FontWeight.bold)),
-                    TextSpan(text: "C ${totalC.round()}g  ", style: GoogleFonts.inter(color: const Color(0xFF4AC2A4), fontWeight: FontWeight.bold)),
-                    TextSpan(text: "F ${totalF.round()}g", style: GoogleFonts.inter(color: const Color(0xFF8E44AD), fontWeight: FontWeight.bold)),
+                    TextSpan(text: "${totalCal.round()} cal • ", style: GoogleFonts.workSans(color: const Color(0xFF4A80F0), fontWeight: FontWeight.bold)),
+                    TextSpan(text: "P ${totalP.round()}g  ", style: GoogleFonts.workSans(color: const Color(0xFFF39C12), fontWeight: FontWeight.bold)),
+                    TextSpan(text: "C ${totalC.round()}g  ", style: GoogleFonts.workSans(color: const Color(0xFF4AC2A4), fontWeight: FontWeight.bold)),
+                    TextSpan(text: "F ${totalF.round()}g", style: GoogleFonts.workSans(color: const Color(0xFF8E44AD), fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
@@ -882,11 +882,11 @@ Widget _buildWaterBottle(double progress) {
                   visualDensity: const VisualDensity(vertical: -4), // Pulls items closer
                   title: Text(
                     foodName, 
-                    style: GoogleFonts.inter(fontSize: 14),
+                    style: GoogleFonts.workSans(fontSize: 14),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  subtitle: Text("${item['calories']} cal • P ${item['protein']}g C ${item['carbs']}g F ${item['fat']}g", style: GoogleFonts.inter(fontSize: 11, color: Colors.grey)),
+                  subtitle: Text("${item['calories']} cal • P ${item['protein']}g C ${item['carbs']}g F ${item['fat']}g", style: GoogleFonts.workSans(fontSize: 11, color: Colors.grey)),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -1008,7 +1008,7 @@ Widget _buildWaterBottle(double progress) {
         children: [
           SvgPicture.asset(currentIconPath, width: 24, height: 24),
           const SizedBox(height: 4),
-          Text(label, style: GoogleFonts.inter(fontSize: 10, fontWeight: isSel ? FontWeight.bold : FontWeight.normal, color: labelColor)),
+          Text(label, style: GoogleFonts.workSans(fontSize: 10, fontWeight: isSel ? FontWeight.bold : FontWeight.normal, color: labelColor)),
         ],
       ),
     );
@@ -1022,7 +1022,7 @@ Widget _buildWaterBottle(double progress) {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 20),
-            Text("Statistics", style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w900, color: const Color(0xFF1A1A1A))),
+            Text("Statistics", style: GoogleFonts.workSans(fontSize: 28, fontWeight: FontWeight.w900, color: const Color(0xFF1A1A1A))),
             const SizedBox(height: 20),
             _buildChartCard("Calorie Intake", calStatsData, targets['cal'] ?? 2000, const Color(0xFF4A80F0)),
             const SizedBox(height: 20),
@@ -1056,7 +1056,7 @@ Widget _buildWaterBottle(double progress) {
                 color: isSelected ? const Color(0xFF4A80F0) : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Text(view, style: GoogleFonts.inter(fontSize: 10, color: isSelected ? Colors.white : Colors.grey[600], fontWeight: FontWeight.bold)),
+              child: Text(view, style: GoogleFonts.workSans(fontSize: 10, color: isSelected ? Colors.white : Colors.grey[600], fontWeight: FontWeight.bold)),
             ),
           );
         }).toList(),
@@ -1079,7 +1079,7 @@ Widget _buildWaterBottle(double progress) {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF1A1A1A))),
+              Text(title, style: GoogleFonts.workSans(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF1A1A1A))),
               _buildStatsToggle(),
             ],
           ),
@@ -1177,7 +1177,7 @@ Widget _buildWaterBottle(double progress) {
       children: [
         Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 6),
-        Text(label, style: GoogleFonts.inter(fontSize: 10, color: Colors.grey[600])),
+        Text(label, style: GoogleFonts.workSans(fontSize: 10, color: Colors.grey[600])),
       ],
     );
   }
