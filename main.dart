@@ -255,9 +255,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildBody() {
     switch (_currentIndex) {
       case 0: return _buildDashboard();
+      case 1: return _buildPlanPage();
       case 2: return _buildStatsScreen();
       default: return Center(child: Text("Page ${_currentIndex + 1}", style: GoogleFonts.workSans(fontSize: 18)));
     }
+  }
+
+  Widget _buildPlanPage() {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Plan", style: GoogleFonts.workSans(fontSize: 28, fontWeight: FontWeight.w700, color: const Color(0xFF1A1A1A))),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.settings_remote, color: Color(0xFF4A80F0)),
+                      const SizedBox(width: 12),
+                      Text("System Tools", style: GoogleFonts.workSans(fontSize: 16, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _testConnection,
+                      icon: const Icon(Icons.link),
+                      label: const Text("Test Connection"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4A80F0),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildDashboard() {
@@ -274,8 +320,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 20),
             _buildCaloriesCard(),
             const SizedBox(height: 20),
-            _buildDiaryHeader(),
-            const SizedBox(height: 15),
             _buildGroupedDiary(),
             const SizedBox(height: 120),
           ],
@@ -318,7 +362,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               (dailyScore / 10).toStringAsFixed(1),
               style: GoogleFonts.workSans(
                 fontSize: 18,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 color: const Color(0xFFFFB800),
               ),
             ),
@@ -426,7 +470,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(width: 8), // Add some space between icon and text
                     Text("${(totals['cal'] ?? 0).round()} cal", 
-                        style: GoogleFonts.workSans(fontSize: 22, fontWeight: FontWeight.w900)),
+                        style: GoogleFonts.workSans(fontSize: 22, fontWeight: FontWeight.w600)),
                     Text(" / ${(targets['cal'] ?? 0).round()}", 
                         style: GoogleFonts.workSans(fontSize: 14, color: Colors.grey)),
                   ],
@@ -507,7 +551,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   text: "${taken.toInt()}g",
                   style: GoogleFonts.workSans(
                     fontSize: 10,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w500,
                     color: (target * 1.1 - taken) > 0 ? Colors.black : Colors.red, // Changed to black
                   ),
                 ),
@@ -532,7 +576,7 @@ Widget _buildWaterBottle(double progress) {
   
   // Assuming your goal is stored in targets['water']
   double goalInLiters = (targets['water'] ?? 0) / 1000;
-  String formattedGoal = "${goalInLiters.toStringAsFixed(2)} Ltr";
+  String formattedGoal = "${goalInLiters.toStringAsFixed(1)} Ltr";
   double currentLogLiters = (totals['water'] ?? 0.0) / 1000;
 
   return Column(
@@ -613,18 +657,6 @@ Widget _buildWaterBottle(double progress) {
   );
 }
 
-  Widget _buildDiaryHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text("Diary", style: GoogleFonts.workSans(fontSize: 22, fontWeight: FontWeight.w800)),
-        TextButton(
-          onPressed: _testConnection,
-          child: Text("Test Connect", style: GoogleFonts.workSans(color: const Color(0xFF4A80F0), fontWeight: FontWeight.w600)),
-        ),
-      ],
-    );
-  }
 
   Widget _buildDiaryItem(String title, String subtitle, String cal, String details, IconData icon) {
     return Container(
@@ -824,97 +856,98 @@ Widget _buildWaterBottle(double progress) {
     final existingTypes = typesOrder.where((t) => grouped.containsKey(t)).toList();
 
     final Map<String, Color> mealColors = {
-      "Breakfast": const Color(0xFFE67E22), // Deep Orange
-      "Lunch": const Color(0xFF4A80F0),     // Primary Blue
-      "Dinner": const Color(0xFF2C3E50),    // Midnight Blue
-      "Snack": const Color(0xFF27AE60),     // Forest Green
+      "Breakfast": const Color(0xFFE67E22), 
+      "Lunch": const Color(0xFF4A80F0),     
+      "Dinner": const Color(0xFF2C3E50),    
+      "Snack": const Color(0xFF27AE60),     
     };
 
-    return Column(
-      children: existingTypes.map((type) {
-        final mealItems = grouped[type]!;
-        final Color color = mealColors[type] ?? const Color(0xFF4A80F0);
-        double totalCal = 0, totalP = 0, totalC = 0, totalF = 0;
-        for (var i in mealItems) {
-          totalCal += (i['calories'] ?? 0).toDouble();
-          totalP += (i['protein'] ?? 0).toDouble();
-          totalC += (i['carbs'] ?? 0).toDouble();
-          totalF += (i['fat'] ?? 0).toDouble();
-        }
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))
+        ],
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: true,
+          title: Text("Diary", style: GoogleFonts.workSans(fontSize: 20, fontWeight: FontWeight.w700, color: const Color(0xFF1A1A1A))),
+          leading: const Icon(Icons.menu_book, color: Color(0xFF4A80F0)),
+          childrenPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          children: existingTypes.map((type) {
+            final mealItems = grouped[type]!;
+            final color = mealColors[type] ?? Colors.grey;
+            double totalCal = 0, totalP = 0, totalC = 0, totalF = 0;
+            for (var i in mealItems) {
+              totalCal += (i['calories'] ?? 0).toDouble();
+              totalP += (i['protein'] ?? 0).toDouble();
+              totalC += (i['carbs'] ?? 0).toDouble();
+              totalF += (i['fat'] ?? 0).toDouble();
+            }
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-          child: Theme(
-            data: Theme.of(context).copyWith(
-              dividerColor: Colors.transparent,
-              splashColor: Colors.transparent,
-              highlightColor: Colors.transparent,
-              hoverColor: Colors.transparent,
-            ),
-            child: ExpansionTile(
-              leading: Container(
-                padding: const EdgeInsets.all(6), // Reduced from 8 to give more room
-                decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                child: SvgPicture.asset('assets/icons/$type.svg', width: 24, height: 24, // Standard 24x24
-                  fit: BoxFit.contain,
-                  placeholderBuilder: (context) => Icon(Icons.restaurant, color: color)),
-              ),
-              title: Text(type, style: GoogleFonts.workSans(fontWeight: FontWeight.bold, fontSize: 17, color: color)),
-              subtitle: RichText(
-                text: TextSpan(
-                  style: GoogleFonts.workSans(fontSize: 11, color: Colors.grey[500]),
-                  children: [
-                    TextSpan(text: "${totalCal.round()} cal • ", style: GoogleFonts.workSans(color: const Color(0xFF4A80F0), fontWeight: FontWeight.w500)),
-                    TextSpan(text: "P ${totalP.round()}g  ", style: GoogleFonts.workSans(color: const Color(0xFFF39C12), fontWeight: FontWeight.w500)),
-                    TextSpan(text: "C ${totalC.round()}g  ", style: GoogleFonts.workSans(color: const Color(0xFF4AC2A4), fontWeight: FontWeight.w500)),
-                    TextSpan(text: "F ${totalF.round()}g", style: GoogleFonts.workSans(color: const Color(0xFF8E44AD), fontWeight: FontWeight.w500)),
-                  ],
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.withOpacity(0.1))),
+              child: ExpansionTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                  child: SvgPicture.asset('assets/icons/$type.svg', width: 24, height: 24,
+                    fit: BoxFit.contain,
+                    placeholderBuilder: (context) => Icon(Icons.restaurant, color: color)),
                 ),
-              ),
-              children: mealItems.map((item) {
-                // Ensure name is single line and ignores newlines
-                String foodName = (item['food_name'] ?? "").toString().replaceAll("\n", " ").trim();
-                
-                return ListTile(
-                  dense: true, // Tightens the layout
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0), // Zero vertical padding
-                  visualDensity: const VisualDensity(vertical: -4), // Pulls items closer
-                  title: Text(
-                    foodName, 
-                    style: GoogleFonts.workSans(fontSize: 14),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text("${item['calories']} cal • P ${item['protein']}g C ${item['carbs']}g F ${item['fat']}g", style: GoogleFonts.workSans(fontSize: 11, color: Colors.grey)),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
+                title: Text(type, style: GoogleFonts.workSans(fontWeight: FontWeight.w600, fontSize: 17, color: color)),
+                subtitle: RichText(
+                  text: TextSpan(
+                    style: GoogleFonts.workSans(fontSize: 11, color: Colors.grey[500]),
                     children: [
-                      GestureDetector(
-                        onTap: () => _showEditMealDialog(item['id'], foodName),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
-                          child: SvgPicture.asset('assets/icons/edit.svg', width: 20, height: 20, 
-                            placeholderBuilder: (_) => Icon(Icons.edit, size: 20, color: Colors.grey[800])),
-                        ),
-                      ),
-                      const SizedBox(width: 1), // ADJUST THIS NUMBER for space between edit and delete
-                      GestureDetector(
-                        onTap: () => _deleteMealItem(item['id']),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
-                          child: SvgPicture.asset('assets/icons/delete.svg', width: 19, height: 19, 
-                            placeholderBuilder: (_) => Icon(Icons.delete, size: 20, color: Colors.grey[800])),
-                        ),
-                      ),
+                      TextSpan(text: "${totalCal.round()} cal • ", style: GoogleFonts.workSans(color: const Color(0xFF4A80F0), fontWeight: FontWeight.w500)),
+                      TextSpan(text: "P ${totalP.round()}g  ", style: GoogleFonts.workSans(color: const Color(0xFFF39C12), fontWeight: FontWeight.w500)),
+                      TextSpan(text: "C ${totalC.round()}g  ", style: GoogleFonts.workSans(color: const Color(0xFF4AC2A4), fontWeight: FontWeight.w500)),
+                      TextSpan(text: "F ${totalF.round()}g", style: GoogleFonts.workSans(color: const Color(0xFF8E44AD), fontWeight: FontWeight.w500)),
                     ],
                   ),
-                );
-              }).toList(),
-            ),
-          ),
-        );
-      }).toList(),
+                ),
+                children: mealItems.map((item) {
+                  String foodName = (item['food_name'] ?? "").toString().replaceAll("\n", " ").trim();
+                  return ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+                    visualDensity: const VisualDensity(vertical: -4),
+                    title: Text(foodName, style: GoogleFonts.workSans(fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text("${item['calories']} cal • P ${item['protein']}g C ${item['carbs']}g F ${item['fat']}g", style: GoogleFonts.workSans(fontSize: 11, color: Colors.grey)),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          onTap: () => _showEditMealDialog(item['id'], foodName),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+                            child: SvgPicture.asset('assets/icons/edit.svg', width: 20, height: 20, 
+                              placeholderBuilder: (_) => Icon(Icons.edit, size: 20, color: Colors.grey[800])),
+                          ),
+                        ),
+                        const SizedBox(width: 1),
+                        GestureDetector(
+                          onTap: () => _deleteMealItem(item['id']),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+                            child: SvgPicture.asset('assets/icons/delete.svg', width: 19, height: 19, 
+                              placeholderBuilder: (_) => Icon(Icons.delete, size: 20, color: Colors.grey[800])),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
     );
   }
 
@@ -1022,7 +1055,7 @@ Widget _buildWaterBottle(double progress) {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 20),
-            Text("Statistics", style: GoogleFonts.workSans(fontSize: 28, fontWeight: FontWeight.w900, color: const Color(0xFF1A1A1A))),
+            Text("Statistics", style: GoogleFonts.workSans(fontSize: 22, fontWeight: FontWeight.w700, color: const Color(0xFF1A1A1A))),
             const SizedBox(height: 20),
             _buildChartCard("Calorie Intake", calStatsData, targets['cal'] ?? 2000, const Color(0xFF4A80F0)),
             const SizedBox(height: 20),
