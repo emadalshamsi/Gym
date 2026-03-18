@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     daily_carb_target INTEGER DEFAULT 250,
     daily_fat_target INTEGER DEFAULT 70,
     daily_water_target_ml INTEGER DEFAULT 2000,
+    habit_goals JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

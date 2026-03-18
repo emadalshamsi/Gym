@@ -67,6 +67,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _statsView = "Week"; // To toggle between Week/Month
   List<dynamic> calStatsData = []; // Real calorie data for chart
   List<dynamic> waterStatsData = []; // Real water data for chart
+  
+  // Goals State (Plan Page)
+  bool isEditingGoals = false;
+  Map<String, Map<String, dynamic>> goals = {
+    "Sleep": {"min": "", "max": "", "days": [false, false, false, false, false, true, false], "icon": "P1_sleep.svg"},
+    "Calorie Intake": {"min": "", "max": "", "days": [false, false, false, false, false, true, false], "icon": "P2_food.svg"},
+    "Water Intake": {"min": "", "max": "", "days": [false, false, false, false, false, true, false], "icon": "P3_water.svg"},
+    "Walk Steps": {"min": "", "max": "", "days": [false, false, false, false, false, true, false], "icon": "P4_walk.svg"},
+    "Protein": {"value": "", "min": "", "max": "", "days": [true, true, true, true, true, true, true], "icon": "04_protein.svg"},
+    "Carbs": {"value": "", "min": "", "max": "", "days": [true, true, true, true, true, true, true], "icon": "05_carbs.svg"},
+    "Fat": {"value": "", "min": "", "max": "", "days": [true, true, true, true, true, true, true], "icon": "06_fat.svg"},
+    "Workout": {"min": null, "max": null, "days": [false, true, false, true, true, false, false], "icon": "P5_workout.svg"},
+    "Measurement": {"min": null, "max": null, "days": [false, false, false, false, false, true, false], "icon": "P6_measure.svg"},
+    "Progress Photo": {"min": null, "max": null, "days": [false, false, false, false, false, true, false], "icon": "P7_photo.svg"},
+  };
+
+  final Map<String, TextEditingController> _goalControllers = {};
+  
+  TextEditingController _getGoalController(String key, String initialValue) {
+    if (!_goalControllers.containsKey(key)) {
+      _goalControllers[key] = TextEditingController(text: initialValue);
+    }
+    return _goalControllers[key]!;
+  }
+
+  void _clearGoalControllers() {
+    for (var c in _goalControllers.values) {
+      c.dispose();
+    }
+    _goalControllers.clear();
+  }
 
   @override
   void initState() {
@@ -121,11 +152,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
           profile = data['profile'] ?? profile;
           items = data['items'] ?? [];
 
+          // Sync Goals from Profile
+          if (newTargets != null && newTargets['habit_goals'] != null) {
+             final Map<String, dynamic> remoteGoals = Map<String, dynamic>.from(newTargets['habit_goals']);
+             remoteGoals.forEach((key, value) {
+                if (goals.containsKey(key)) {
+                   goals[key] = Map<String, dynamic>.from(value);
+                }
+             });
+          }
+
           // FIXED: Added null checks before using > operator
           double calP = (targets['cal'] ?? 0.0) > 0 ? ((totals['cal'] ?? 0.0) / (targets['cal'] ?? 1.0)) : 0.0;
           double waterP = (targets['water'] ?? 0.0) > 0 ? ((totals['water'] ?? 0.0) / (targets['water'] ?? 1.0)) : 0.0;
 
           dailyScore = (((calP + waterP) / 2) * 100).toInt().clamp(0, 100);
+          _clearGoalControllers(); // Ensure controllers rebuild with new backend data
         });
       } else {
         _showError("Server Error ${response.statusCode}: ${response.reasonPhrase}");
@@ -263,13 +305,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildPlanPage() {
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Plan", style: GoogleFonts.workSans(fontSize: 28, fontWeight: FontWeight.w700, color: const Color(0xFF1A1A1A))),
+            Text("Plan",
+                style: GoogleFonts.workSans(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1A1A1A))),
             const SizedBox(height: 20),
+            
+            // Goals List
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                  color: Colors.white, borderRadius: BorderRadius.circular(24)),
+              child: Column(
+                children: [
+                  ...goals.entries.where((e) => !["Protein", "Carbs", "Fat"].contains(e.key)).toList().asMap().entries.map((item) {
+                    final entry = item.value;
+                    bool isLast = item.key == goals.entries.where((e) => !["Protein", "Carbs", "Fat"].contains(e.key)).length - 1;
+                    return Column(
+                      children: [
+                        _buildGoalItem(entry.key, entry.value),
+                        if (!isLast) const DashedDivider(),
+                      ],
+                    );
+                  }).toList(),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (!isEditingGoals)
+                        TextButton(
+                          onPressed: () => setState(() => isEditingGoals = true),
+                          child: Text("Modify",
+                              style: GoogleFonts.workSans(
+                                  color: const Color(0xFF4A80F0),
+                                  fontWeight: FontWeight.w600)),
+                        )
+                      else ...[
+                        TextButton(
+                          onPressed: () {
+                             _clearGoalControllers(); // Reset to current state
+                             setState(() => isEditingGoals = false);
+                          },
+                          child: Text("Cancel",
+                              style: GoogleFonts.workSans(
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w500)),
+                        ),
+                        const SizedBox(width: 15),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF4A80F0),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          onPressed: _saveGoals,
+                          child: const Text("Save Changes"),
+                        ),
+                      ]
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 20),
+            // Existing System Tools
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
@@ -306,6 +411,220 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Widget _buildGoalItem(String title, Map<String, dynamic> data) {
+    List<String> weekDays = ["Sa", "Su", "Mo", "Tu", "We", "Th", "Fr"];
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 15),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              SvgPicture.asset('assets/icons/${data['icon']}', width: 28, height: 28),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: GoogleFonts.workSans(
+                            fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF1A1A1A))),
+                    Text("Set a Day/s",
+                        style: GoogleFonts.workSans(
+                            fontSize: 10, fontStyle: FontStyle.italic, color: Colors.grey[500])),
+                  ],
+                ),
+              ),
+              if (data['min'] != null || data['max'] != null) ...[
+                _buildGoalInput(title, "min", data['min']?.toString() ?? ""),
+                const SizedBox(width: 10),
+                _buildGoalInput(title, "max", data['max']?.toString() ?? ""),
+              ],
+            ],
+          ),
+          if (title == "Calorie Intake") ...[
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end, // Aligned with the end of the top row
+              children: [
+                _buildMacroSubInput("Protein", goals['Protein']!),
+                const SizedBox(width: 12),
+                _buildMacroSubInput("Carbs", goals['Carbs']!),
+                const SizedBox(width: 12),
+                _buildMacroSubInput("Fat", goals['Fat']!),
+              ],
+            ),
+          ],
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final List<String> full = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
+              final List<String> short = ["Sa", "Su", "Mo", "Tu", "We", "Th", "Fr"];
+              final List<String> tiny = ["S", "S", "M", "T", "W", "T", "F"];
+              
+              final double dayWidth = constraints.maxWidth / 7;
+              List<String> labels = short;
+              if (dayWidth > 55) labels = full;
+              else if (dayWidth < 38) labels = tiny;
+
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: List.generate(7, (index) {
+                  bool isSelected = data['days'][index];
+                  return Flexible(
+                    child: GestureDetector(
+                      onTap: isEditingGoals
+                          ? () => setState(() => data['days'][index] = !isSelected)
+                          : null,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SvgPicture.asset(
+                              isSelected ? 'assets/icons/PS_done.svg' : 'assets/icons/PS_not.svg',
+                              width: 14, // Slightly smaller icons to fit better
+                              height: 14,
+                              color: isSelected ? const Color(0xFF4A80F0) : Colors.grey[200],
+                              colorBlendMode: BlendMode.srcIn,
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                labels[index],
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.workSans(
+                                    fontSize: 10,
+                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                    color: isSelected ? Colors.grey[700] : Colors.grey[400]),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMacroSubInput(String title, Map<String, dynamic> data) {
+    String label = title; // Use full names "Protein", "Carbs", "Fat"
+    return Row(
+      children: [
+        SvgPicture.asset('assets/icons/${data['icon']}', width: 14, height: 14),
+        const SizedBox(width: 5),
+        Text(label, style: GoogleFonts.workSans(fontSize: 10, color: Colors.grey[600])),
+        const SizedBox(width: 5),
+        _buildGoalInput(title, "value", data['max']?.toString() ?? "", width: 45),
+      ],
+    );
+  }
+
+  Widget _buildGoalInput(String title, String type, String value, {double width = 60}) {
+    final controllerKey = "$title-$type";
+    final controller = _getGoalController(controllerKey, value);
+    
+    return Container(
+      width: width,
+      height: 28,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      alignment: Alignment.center,
+      child: TextField(
+        enabled: isEditingGoals,
+        controller: controller,
+        textAlign: TextAlign.center,
+        textAlignVertical: TextAlignVertical.center,
+        style: GoogleFonts.workSans(fontSize: 12, color: Colors.grey[800], fontWeight: FontWeight.w500),
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: type == "value" ? "0" : type,
+          hintStyle: GoogleFonts.workSans(fontSize: 10, color: Colors.grey[300], fontStyle: FontStyle.italic),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.zero,
+        ),
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        onChanged: (val) {
+           goals[title]![type] = val;
+        },
+      ),
+    );
+  }
+
+  Future<void> _saveGoals() async {
+    setState(() => isLoading = true);
+    _clearGoalControllers();
+    
+    try {
+      // Sync days from Calorie Intake to all macros
+      if (goals.containsKey('Calorie Intake')) {
+        final calDays = List<bool>.from(goals['Calorie Intake']!['days']);
+        if (goals.containsKey('Protein')) goals['Protein']!['days'] = calDays;
+        if (goals.containsKey('Carbs')) goals['Carbs']!['days'] = calDays;
+        if (goals.containsKey('Fat')) goals['Fat']!['days'] = calDays;
+      }
+
+      int calTarget = _calculateTarget(goals['Calorie Intake'], targets['cal'] ?? 2000.0);
+      int waterTarget = _calculateTarget(goals['Water Intake'], targets['water'] ?? 2000.0);
+      int proteinTarget = _calculateTarget(goals['Protein'], targets['prot'] ?? 150.0);
+      int carbTarget = _calculateTarget(goals['Carbs'], targets['carb'] ?? 250.0);
+      int fatTarget = _calculateTarget(goals['Fat'], targets['fat'] ?? 70.0);
+
+      final response = await http.post(
+        Uri.parse("$baseUrl/update_goals"),
+        headers: {"Content-Type": "application/json; charset=utf-8"},
+        body: json.encode({
+          "user_id": userId,
+          "habit_goals": goals,
+          "calorie_target": calTarget,
+          "water_target": waterTarget,
+          "protein_target": proteinTarget,
+          "carb_target": carbTarget,
+          "fat_target": fatTarget,
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        _showSuccess("Goals saved successfully");
+        setState(() => isEditingGoals = false);
+        await _fetchData(selectedDate);
+      } else {
+        _showError("Failed to save goals: ${response.statusCode}");
+      }
+    } catch (e) {
+      _showError("Error saving goals: $e");
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  int _calculateTarget(Map<String, dynamic>? data, double fallback) {
+    if (data == null) return fallback.toInt();
+    double min = double.tryParse(data['min']?.toString() ?? "") ?? 0;
+    double max = double.tryParse(data['max']?.toString() ?? "") ?? 0;
+    double val = double.tryParse(data['value']?.toString() ?? "") ?? 0;
+
+    // If 'value' is provided (Macros), use it directly
+    if (val > 0) return val.toInt();
+
+    // If no values provided, return default
+    if (min == 0 && max == 0) return fallback.toInt();
+    // If only one value provided, use it as is
+    if (min == 0) return max.toInt();
+    if (max == 0) return min.toInt();
+    // Use average and round up to next 10 (e.g. 2131.5 -> 2140)
+    double avg = (min + max) / 2;
+    return (avg / 10).ceil() * 10;
+  }
+
   Widget _buildDashboard() {
     return SafeArea(
       child: SingleChildScrollView(
@@ -319,6 +638,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _buildTimeline(),
             const SizedBox(height: 20),
             _buildCaloriesCard(),
+            const SizedBox(height: 20),
+            _buildStatusRectangles(),
             const SizedBox(height: 20),
             _buildGroupedDiary(),
             const SizedBox(height: 120),
@@ -657,6 +978,108 @@ Widget _buildWaterBottle(double progress) {
   );
 }
 
+
+  Widget _buildStatusRectangles() {
+    // Current date for comparison
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final currentSelectedDate = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+    final isToday = currentSelectedDate.isAtSameMomentAs(today);
+    final isPast = currentSelectedDate.isBefore(today);
+
+    // Items list (order: Sleep, Calory, Water, walksteps, workout, measurement, progress photo)
+    final itemsList = [
+      {"label": "Sleep", "icon": "P1_sleep.svg"},
+      {"label": "Calory", "icon": "P2_food.svg"},
+      {"label": "Water", "icon": "P3_water.svg"},
+      {"label": "Walksteps", "icon": "P4_walk.svg"},
+      {"label": "Workout", "icon": "P5_workout.svg"},
+      {"label": "Measurement", "icon": "P6_measure.svg"},
+      {"label": "Progress Photo", "icon": "P7_photo.svg"},
+    ];
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(itemsList.length, (index) {
+        final item = itemsList[index];
+        final label = item["label"]!;
+        final iconName = item["icon"]!;
+        
+        String statusSvg = "PS_part.svg"; // Default for unimplemented or today
+        String? scheduledDayText;
+
+        if (!isToday && !isPast) {
+          // Future / Scheduled
+          statusSvg = "PS_scheduled.svg";
+          scheduledDayText = DateFormat('E').format(currentSelectedDate).toUpperCase();
+        } else {
+          // Logic for implemented data: Calory and Water
+          double? ratio;
+          if (label == "Calory") {
+            double currentCal = (totals['cal'] ?? 0.0).toDouble();
+            double targetCal = (targets['cal'] ?? 2000.0).toDouble();
+            if (targetCal > 0) ratio = currentCal / targetCal;
+          } else if (label == "Water") {
+            double currentWater = (totals['water'] ?? 0.0).toDouble();
+            double targetWater = (targets['water'] ?? 2000.0).toDouble();
+            if (targetWater > 0) ratio = currentWater / targetWater;
+          }
+
+          if (ratio != null) {
+            if (ratio >= 0.9 && ratio <= 1.1) {
+              statusSvg = "PS_done.svg";
+            } else {
+              statusSvg = isPast ? "PS_not.svg" : "PS_part.svg";
+            }
+          } else {
+            // Placeholder logic for others (Sleep, Walksteps, etc.)
+            statusSvg = isPast ? "PS_not.svg" : "PS_part.svg";
+          }
+        }
+
+        return Container(
+          width: 38,
+          height: 65,
+          margin: EdgeInsets.only(left: index == 0 ? 0 : 9),
+          decoration: BoxDecoration(
+            color: const Color(0xFFD8D4C7),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              // Status Icon (PS_done, PS_not, etc.) - NOW ON TOP
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  SvgPicture.asset(
+                    'assets/icons/$statusSvg',
+                    width: 24,
+                    height: 24,
+                  ),
+                  if (statusSvg == "PS_scheduled.svg" && scheduledDayText != null)
+                    Text(
+                      scheduledDayText,
+                      style: GoogleFonts.workSans(
+                        fontSize: 7,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF7D7969),
+                      ),
+                    ),
+                ],
+              ),
+              // Main Icon (e.g., P1_sleep.svg) - NOW BELOW
+              SvgPicture.asset(
+                'assets/icons/$iconName',
+                width: 22,
+                height: 22,
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
 
   Widget _buildDiaryItem(String title, String subtitle, String cal, String details, IconData icon) {
     return Container(
@@ -1241,8 +1664,66 @@ Widget _buildWaterBottle(double progress) {
       spots.add(FlSpot((lastIdx + i).toDouble(), avg));
     }
     return spots;
+  } // End of _getForecastSpots
+} // End of _DashboardScreenState
+
+class DashedDivider extends StatelessWidget {
+  const DashedDivider({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 1,
+      child: CustomPaint(
+        painter: DashboardDashedLinePainter(),
+        size: const Size(double.infinity, 1),
+      ),
+    );
+  }
+}
+
+class DashboardDashedLinePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.grey.withOpacity(0.3)
+      ..strokeWidth = 0.5
+      ..style = PaintingStyle.stroke;
+
+    const dashWidth = 3.0;
+    const dashSpace = 3.0;
+    double currentX = 0;
+
+    // Dashed line
+    while (currentX < size.width) {
+      canvas.drawLine(Offset(currentX, 0), Offset(currentX + dashWidth, 0), paint);
+      currentX += dashWidth + dashSpace;
+    }
+
+    // Tiny Triangles at ends
+    final trianglePaint = Paint()
+      ..color = Colors.grey.withOpacity(0.3)
+      ..style = PaintingStyle.fill;
+
+    // Left triangle
+    Path leftPath = Path();
+    leftPath.moveTo(-2, 0);
+    leftPath.lineTo(2, -2.5);
+    leftPath.lineTo(2, 2.5);
+    leftPath.close();
+    canvas.drawPath(leftPath, trianglePaint);
+
+    // Right triangle
+    Path rightPath = Path();
+    rightPath.moveTo(size.width + 2, 0);
+    rightPath.lineTo(size.width - 2, -2.5);
+    rightPath.lineTo(size.width - 2, 2.5);
+    rightPath.close();
+    canvas.drawPath(rightPath, trianglePaint);
   }
 
-  int val(int i) => (i * 137 + 42);
-
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
+int val(int i) => (i * 137 + 42);

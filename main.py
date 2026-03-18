@@ -90,6 +90,15 @@ class MealUpdateRequest(BaseModel):
     item_id: str
     new_food: str
 
+class GoalsUpdateRequest(BaseModel):
+    user_id: str
+    habit_goals: dict
+    calorie_target: Optional[int] = None
+    water_target: Optional[int] = None
+    protein_target: Optional[int] = None
+    carb_target: Optional[int] = None
+    fat_target: Optional[int] = None
+
 # --- 1. تسجيل الوجبات (Log Meal) ---
 @app.post("/log_meal")
 async def log_meal(data: MealLogRequest):
@@ -171,6 +180,28 @@ async def log_water(data: WaterLogRequest):
         logger.error(f"Log Water Error: {e}")
         return {"status": "error", "message": str(e)}
 
+# --- 2b. تحديث الأهداف (Update Goals) ---
+@app.post("/update_goals")
+async def update_goals(data: GoalsUpdateRequest):
+    try:
+        payload = {"habit_goals": data.habit_goals}
+        if data.calorie_target is not None:
+            payload["daily_calorie_target"] = data.calorie_target
+        if data.water_target is not None:
+            payload["daily_water_target_ml"] = data.water_target
+        if data.protein_target is not None:
+            payload["daily_protein_target"] = data.protein_target
+        if data.carb_target is not None:
+            payload["daily_carb_target"] = data.carb_target
+        if data.fat_target is not None:
+            payload["daily_fat_target"] = data.fat_target
+            
+        supabase.table("profiles").update(payload).eq("id", data.user_id).execute()
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Update Goals Error: {e}")
+        return {"status": "error", "message": str(e)}
+
 # --- 3. جلب البيانات اليومية (Daily Intake) ---
 @app.get("/get_daily_intake")
 async def get_daily_intake(user_id: str = Query(...), date: str = Query(None)):
@@ -190,7 +221,8 @@ async def get_daily_intake(user_id: str = Query(...), date: str = Query(None)):
             "prot": profile.get("daily_protein_target", 150),
             "carb": profile.get("daily_carb_target", 250),
             "fat": profile.get("daily_fat_target", 70),
-            "water": profile.get("daily_water_target_ml", 2000)
+            "water": profile.get("daily_water_target_ml", 2000),
+            "habit_goals": profile.get("habit_goals", {})
         }
         
         # جلب الوجبات
