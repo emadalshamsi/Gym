@@ -521,7 +521,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(width: 5),
         Text(label, style: GoogleFonts.workSans(fontSize: 10, color: Colors.grey[600])),
         const SizedBox(width: 5),
-        _buildGoalInput(title, "value", data['max']?.toString() ?? "", width: 45),
+        _buildGoalInput(title, "value", data['value']?.toString() ?? "", width: 45),
       ],
     );
   }
@@ -1008,8 +1008,39 @@ Widget _buildWaterBottle(double progress) {
         String statusSvg = "PS_part.svg"; // Default for unimplemented or today
         String? scheduledDayText;
 
-        if (!isToday && !isPast) {
-          // Future / Scheduled
+        // Map label to goal key
+        String goalKey = label;
+        if (label == "Calory") goalKey = "Calorie Intake";
+        else if (label == "Water") goalKey = "Water Intake";
+        else if (label == "Walksteps") goalKey = "Walk Steps";
+
+        bool isScheduled = true; // Default to true if not found or no schedule
+        final goalData = goals[goalKey];
+        if (goalData != null && goalData['days'] != null) {
+          int currentDayIndex = (currentSelectedDate.weekday % 7); // Dart: 1(Mon)-7(Sun)
+          // Our array: index 0=Sat, 1=Sun, 2=Mon, 3=Tue, 4=Wed, 5=Thu, 6=Fri
+          // Dart Mon=1 -> index 2. Sun=7 -> index 1. Sat=6 -> index 0.
+          int mapIndex = (currentSelectedDate.weekday + 1) % 7;
+          isScheduled = goalData['days'][mapIndex] == true;
+        }
+
+        if (!isScheduled) {
+          statusSvg = "PS_scheduled.svg";
+          // Find next scheduled day
+          if (goalData != null && goalData['days'] != null) {
+             List<dynamic> days = goalData['days'];
+             List<String> weekDays = ["SAT", "SUN", "MON", "TUE", "WED", "THU", "FRI"];
+             int currentDayIndex = (currentSelectedDate.weekday + 1) % 7;
+             for (int i = 1; i <= 7; i++) {
+                 int nextIndex = (currentDayIndex + i) % 7;
+                 if (days[nextIndex] == true) {
+                     scheduledDayText = weekDays[nextIndex];
+                     break;
+                 }
+             }
+          }
+        } else if (!isToday && !isPast) {
+          // Future / Scheduled normally
           statusSvg = "PS_scheduled.svg";
           scheduledDayText = DateFormat('E').format(currentSelectedDate).toUpperCase();
         } else {
@@ -1026,7 +1057,8 @@ Widget _buildWaterBottle(double progress) {
           }
 
           if (ratio != null) {
-            if (ratio >= 0.9 && ratio <= 1.1) {
+            // >= 90% is done, no upper limit for water/calories being "not done"
+            if (ratio >= 0.9) {
               statusSvg = "PS_done.svg";
             } else {
               statusSvg = isPast ? "PS_not.svg" : "PS_part.svg";
