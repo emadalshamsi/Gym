@@ -86,6 +86,16 @@ class WaterLogRequest(BaseModel):
     amount_ml: int
     date: Optional[str] = None
 
+class SleepLogRequest(BaseModel):
+    user_id: str
+    hours: float
+    date: Optional[str] = None
+
+class StepsLogRequest(BaseModel):
+    user_id: str
+    steps: int
+    date: Optional[str] = None
+
 class MealUpdateRequest(BaseModel):
     item_id: str
     new_food: str
@@ -180,6 +190,42 @@ async def log_water(data: WaterLogRequest):
         logger.error(f"Log Water Error: {e}")
         return {"status": "error", "message": str(e)}
 
+# --- 4. تسجيل النوم (Log Sleep) ---
+@app.post("/log_sleep")
+async def log_sleep(data: SleepLogRequest):
+    user_id = data.user_id
+    hours = data.hours
+    log_time = data.date if data.date else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        payload = {
+            "user_id": user_id, 
+            "hours": float(hours),
+            "created_at": log_time
+        }
+        res = supabase.table("sleep_logs").insert(payload).execute()
+        return {"status": "success", "data": res.data}
+    except Exception as e:
+        logger.error(f"Log Sleep Error: {e}")
+        return {"status": "error", "message": str(e)}
+
+# --- 5. تسجيل الخطوات (Log Steps) ---
+@app.post("/log_steps")
+async def log_steps(data: StepsLogRequest):
+    user_id = data.user_id
+    steps = data.steps
+    log_time = data.date if data.date else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        payload = {
+            "user_id": user_id, 
+            "steps": int(steps),
+            "created_at": log_time
+        }
+        res = supabase.table("steps_logs").insert(payload).execute()
+        return {"status": "success", "data": res.data}
+    except Exception as e:
+        logger.error(f"Log Steps Error: {e}")
+        return {"status": "error", "message": str(e)}
+
 # --- 2b. تحديث الأهداف (Update Goals) ---
 @app.post("/update_goals")
 async def update_goals(data: GoalsUpdateRequest):
@@ -238,13 +284,25 @@ async def get_daily_intake(user_id: str = Query(...), date: str = Query(None)):
         water_res = supabase.table("water_logs").select("amount_ml").eq("user_id", user_id).gte("created_at", target_date).lt("created_at", next_day).execute()
         water_data = water_res.data if water_res.data else []
         water_total = sum(w['amount_ml'] for w in water_data)
+
+        # جلب سجلات النوم
+        sleep_res = supabase.table("sleep_logs").select("hours").eq("user_id", user_id).gte("created_at", target_date).lt("created_at", next_day).execute()
+        sleep_data = sleep_res.data if sleep_res.data else []
+        sleep_total = sum(s['hours'] for s in sleep_data)
+
+        # جلب سجلات الخطوات
+        steps_res = supabase.table("steps_logs").select("steps").eq("user_id", user_id).gte("created_at", target_date).lt("created_at", next_day).execute()
+        steps_data = steps_res.data if steps_res.data else []
+        steps_total = sum(s['steps'] for s in steps_data)
         
         totals = {
             "cal": sum((i.get('calories') or 0) for i in items_data),
             "prot": sum((i.get('protein') or 0) for i in items_data),
             "carb": sum((i.get('carbs') or 0) for i in items_data),
             "fat": sum((i.get('fat') or 0) for i in items_data),
-            "water": water_total
+            "water": water_total,
+            "sleep": sleep_total,
+            "steps": steps_total
         }
 
         items_list = [

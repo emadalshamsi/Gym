@@ -41,3 +41,19 @@ CREATE TABLE IF NOT EXISTS public.water_logs (
     amount_ml INTEGER NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Sleep Logs Table
+CREATE TABLE public.sleep_logs (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    user_id uuid NOT NULL,
+    hours numeric NOT NULL,
+    created_at timestamp without time zone DEFAULT now()
+);
+
+-- Steps Logs Table
+CREATE TABLE public.steps_logs (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    user_id uuid NOT NULL,
+    steps integer NOT NULL,
+    created_at timestamp without time zone DEFAULT now()
+);

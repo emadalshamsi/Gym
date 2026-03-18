@@ -58,7 +58,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
 
   // Data State
-  Map<String, double> totals = {"cal": 0.0, "prot": 0.0, "carb": 0.0, "fat": 0.0, "water": 0.0};
+  Map<String, double> totals = {"cal": 0.0, "prot": 0.0, "carb": 0.0, "fat": 0.0, "water": 0.0, "sleep": 0.0, "steps": 0.0};
   Map<String, double> targets = {"cal": 2000.0, "prot": 150.0, "carb": 250.0, "fat": 70.0, "water": 2000.0};
   Map<String, dynamic> profile = {"full_name": "Emad Alshamsi"};
   int dailyScore = 0;
@@ -127,7 +127,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           selectedDate = targetDate;
 
           // إرساء قيم افتراضية قبل التحديث لضمان عدم بقاء بيانات اليوم السابق
-          totals = {"cal": 0.0, "prot": 0.0, "carb": 0.0, "fat": 0.0, "water": 0.0};
+          totals = {"cal": 0.0, "prot": 0.0, "carb": 0.0, "fat": 0.0, "water": 0.0, "sleep": 0.0, "steps": 0.0};
           targets = {"cal": 2000.0, "prot": 150.0, "carb": 250.0, "fat": 70.0, "water": 2000.0};
 
           final Map<String, dynamic>? newTotals = data['totals'] as Map<String, dynamic>?;
@@ -139,6 +139,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             totals['carb'] = (newTotals['carb'] ?? 0.0).toDouble();
             totals['fat'] = (newTotals['fat'] ?? 0.0).toDouble();
             totals['water'] = (newTotals['water'] ?? 0.0).toDouble();
+            totals['sleep'] = (newTotals['sleep'] ?? 0.0).toDouble();
+            totals['steps'] = (newTotals['steps'] ?? 0.0).toDouble();
           }
 
           if (newTargets != null) {
@@ -269,6 +271,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  Future<void> _logSleep(double hours) async {
+    final dateStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(selectedDate);
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/log_sleep"),
+        headers: {"Content-Type": "application/json; charset=utf-8"},
+        body: json.encode({"user_id": userId, "hours": hours, "date": dateStr}),
+      );
+      if (response.statusCode == 200) {
+        await _fetchData(selectedDate);
+        _showSuccess("Sleep logged: $hours hours");
+      }
+    } catch (e) {
+      _showError("Failed to log sleep");
+    }
+  }
+
+  Future<void> _logSteps(int steps) async {
+    final dateStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(selectedDate);
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/log_steps"),
+        headers: {"Content-Type": "application/json; charset=utf-8"},
+        body: json.encode({"user_id": userId, "steps": steps, "date": dateStr}),
+      );
+      if (response.statusCode == 200) {
+        await _fetchData(selectedDate);
+        _showSuccess("Steps logged: $steps");
+      }
+    } catch (e) {
+      _showError("Failed to log steps");
+    }
+  }
+
   void _showSuccess(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.green));
   }
@@ -324,9 +360,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   color: Colors.white, borderRadius: BorderRadius.circular(24)),
               child: Column(
                 children: [
-                  ...goals.entries.where((e) => !["Protein", "Carbs", "Fat"].contains(e.key)).toList().asMap().entries.map((item) {
+                  ...goals.entries.where((e) => !["Protein", "Carbs", "Fat", "Workout", "Measurement", "Progress Photo"].contains(e.key)).toList().asMap().entries.map((item) {
                     final entry = item.value;
-                    bool isLast = item.key == goals.entries.where((e) => !["Protein", "Carbs", "Fat"].contains(e.key)).length - 1;
+                    bool isLast = item.key == goals.entries.where((e) => !["Protein", "Carbs", "Fat", "Workout", "Measurement", "Progress Photo"].contains(e.key)).length - 1;
                     return Column(
                       children: [
                         _buildGoalItem(entry.key, entry.value),
@@ -987,15 +1023,14 @@ Widget _buildWaterBottle(double progress) {
     final isToday = currentSelectedDate.isAtSameMomentAs(today);
     final isPast = currentSelectedDate.isBefore(today);
 
-    // Items list (order: Sleep, Calory, Water, walksteps, workout, measurement, progress photo)
     final itemsList = [
       {"label": "Sleep", "icon": "P1_sleep.svg"},
       {"label": "Calory", "icon": "P2_food.svg"},
       {"label": "Water", "icon": "P3_water.svg"},
       {"label": "Walksteps", "icon": "P4_walk.svg"},
-      {"label": "Workout", "icon": "P5_workout.svg"},
-      {"label": "Measurement", "icon": "P6_measure.svg"},
-      {"label": "Progress Photo", "icon": "P7_photo.svg"},
+      // {"label": "Workout", "icon": "P5_workout.svg"},
+      // {"label": "Measurement", "icon": "P6_measure.svg"},
+      // {"label": "Progress Photo", "icon": "P7_photo.svg"},
     ];
 
     return Row(
@@ -1044,7 +1079,7 @@ Widget _buildWaterBottle(double progress) {
           statusSvg = "PS_scheduled.svg";
           scheduledDayText = DateFormat('E').format(currentSelectedDate).toUpperCase();
         } else {
-          // Logic for implemented data: Calory and Water
+          // Logic for implemented data: Calory and Water and Habits
           double? ratio;
           if (label == "Calory") {
             double currentCal = (totals['cal'] ?? 0.0).toDouble();
@@ -1054,6 +1089,24 @@ Widget _buildWaterBottle(double progress) {
             double currentWater = (totals['water'] ?? 0.0).toDouble();
             double targetWater = (targets['water'] ?? 2000.0).toDouble();
             if (targetWater > 0) ratio = currentWater / targetWater;
+          } else if (label == "Sleep") {
+            double currentSleep = totals['sleep'] ?? 0.0;
+            double targetSleep = 8.0; // Default
+            if (goalData != null) {
+              var exactVal = double.tryParse(goalData['value']?.toString() ?? "");
+              var minVal = double.tryParse(goalData['min']?.toString() ?? "");
+              targetSleep = exactVal ?? minVal ?? 8.0;
+            }
+            if (targetSleep > 0) ratio = currentSleep / targetSleep;
+          } else if (label == "Walksteps") {
+            double currentSteps = totals['steps'] ?? 0.0;
+            double targetSteps = 10000.0; // Default
+            if (goalData != null) {
+              var exactVal = double.tryParse(goalData['value']?.toString() ?? "");
+              var minVal = double.tryParse(goalData['min']?.toString() ?? "");
+              targetSteps = exactVal ?? minVal ?? 10000.0;
+            }
+            if (targetSteps > 0) ratio = currentSteps / targetSteps;
           }
 
           if (ratio != null) {
@@ -1148,9 +1201,13 @@ Widget _buildWaterBottle(double progress) {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         if (isMenuOpen) ...[
+          _buildFabMenuItem(Icons.directions_walk, "Walk Steps", Colors.orange, _showStepsDialog),
+          const SizedBox(height: 12),
           _buildFabMenuItem(Icons.water_drop, "Water Intake", Colors.blue, _showWaterDialog),
           const SizedBox(height: 12),
-          _buildFabMenuItem(Icons.auto_awesome, "AI Meal Scan", Colors.purple, _showMealDialog),
+          _buildFabMenuItem(Icons.restaurant, "Meal (Calory)", Colors.purple, _showMealDialog), // Using showMealDialog for now
+          const SizedBox(height: 12),
+          _buildFabMenuItem(Icons.bedtime, "Sleep", Colors.indigo, _showSleepDialog),
           const SizedBox(height: 20),
         ],
         FloatingActionButton(
@@ -1235,6 +1292,84 @@ Widget _buildWaterBottle(double progress) {
               Navigator.pop(ctx);
             },
             child: const Text("Log Water"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSleepDialog() {
+    double hours = 8.0;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text("Log Sleep (Hours)", style: GoogleFonts.workSans(fontWeight: FontWeight.bold)),
+        content: StatefulBuilder(builder: (c, setS) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("${hours.toStringAsFixed(1)} h", style: GoogleFonts.workSans(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.indigo)),
+              const SizedBox(height: 20),
+              Slider(
+                value: hours,
+                min: 0,
+                max: 16,
+                divisions: 32,
+                onChanged: (double v) => setS(() => hours = v),
+              ),
+              Text("Drag to adjust", style: GoogleFonts.workSans(fontSize: 12, color: Colors.grey)),
+            ],
+          );
+        }),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            onPressed: () {
+              _logSleep(hours);
+              Navigator.pop(ctx);
+            },
+            child: const Text("Log Sleep"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showStepsDialog() {
+    int steps = 5000;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text("Log Walk Steps", style: GoogleFonts.workSans(fontWeight: FontWeight.bold)),
+        content: StatefulBuilder(builder: (c, setS) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("$steps", style: GoogleFonts.workSans(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.orange)),
+              const SizedBox(height: 20),
+              Slider(
+                value: steps.toDouble(),
+                min: 0,
+                max: 30000,
+                divisions: 60,
+                onChanged: (double v) => setS(() => steps = v.toInt()),
+              ),
+              Text("Drag to adjust", style: GoogleFonts.workSans(fontSize: 12, color: Colors.grey)),
+            ],
+          );
+        }),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            onPressed: () {
+              _logSteps(steps);
+              Navigator.pop(ctx);
+            },
+            child: const Text("Log Steps"),
           ),
         ],
       ),
