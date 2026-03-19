@@ -360,9 +360,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   color: Colors.white, borderRadius: BorderRadius.circular(24)),
               child: Column(
                 children: [
-                  ...goals.entries.where((e) => !["Protein", "Carbs", "Fat", "Workout", "Measurement", "Progress Photo"].contains(e.key)).toList().asMap().entries.map((item) {
+                  ...goals.entries.where((e) => !["Protein", "Carbs", "Fat"].contains(e.key)).toList().asMap().entries.map((item) {
                     final entry = item.value;
-                    bool isLast = item.key == goals.entries.where((e) => !["Protein", "Carbs", "Fat", "Workout", "Measurement", "Progress Photo"].contains(e.key)).length - 1;
+                    bool isLast = item.key == goals.entries.where((e) => !["Protein", "Carbs", "Fat"].contains(e.key)).length - 1;
                     return Column(
                       children: [
                         _buildGoalItem(entry.key, entry.value),
@@ -597,7 +597,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _saveGoals() async {
     setState(() => isLoading = true);
-    _clearGoalControllers();
     
     try {
       // Sync days from Calorie Intake to all macros
@@ -1028,9 +1027,9 @@ Widget _buildWaterBottle(double progress) {
       {"label": "Calory", "icon": "P2_food.svg"},
       {"label": "Water", "icon": "P3_water.svg"},
       {"label": "Walksteps", "icon": "P4_walk.svg"},
-      // {"label": "Workout", "icon": "P5_workout.svg"},
-      // {"label": "Measurement", "icon": "P6_measure.svg"},
-      // {"label": "Progress Photo", "icon": "P7_photo.svg"},
+      {"label": "Workout", "icon": "P5_workout.svg"},
+      {"label": "Measurement", "icon": "P6_measure.svg"},
+      {"label": "Progress Photo", "icon": "P7_photo.svg"},
     ];
 
     return Row(
