@@ -483,7 +483,7 @@ async def align_photos(data: AlignPhotosRequest):
     img1 = clean_b64(data.img1_base64)
     img2 = clean_b64(data.img2_base64)
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
     prompt = (
         "Analyze these two progress photos. Detect the precise [x, y] coordinates for: "
@@ -507,10 +507,18 @@ async def align_photos(data: AlignPhotosRequest):
     try:
         response = requests.post(url, json=payload, timeout=20)
         res_data = response.json()
+        
+        if 'candidates' not in res_data:
+            error_msg = res_data.get('error', {}).get('message', 'Unknown Gemini Error')
+            logger.error(f"Gemini API Error: {res_data}")
+            return {"error": f"Gemini Error: {error_msg}", "status": "failed"}
+
         raw_text = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
         
         match = re.search(r'(\{.*\})', raw_text, re.DOTALL)
-        if not match: return {"error": "AI failed to return JSON", "status": "failed"}
+        if not match: 
+            logger.error(f"No JSON in AI response: {raw_text}")
+            return {"error": "AI failed to return valid coordinates", "status": "failed"}
         
         pts = json.loads(match.group(1))
         
