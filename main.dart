@@ -463,6 +463,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ],
               ),
+            ),
             const SizedBox(height: 20),
             _buildBodyTrackingSection(),
             const SizedBox(height: 100),
@@ -743,56 +744,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 12),
           _buildGenderToggle(),
           const SizedBox(height: 20),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Left Column: Neck -> Calves R
-              Expanded(
-                flex: 2,
-                child: Column(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              double w = constraints.maxWidth;
+              double h = w * 1.5; // Aspect ratio for the figure area (adjusted for better fit)
+              
+              return SizedBox(
+                width: w,
+                height: h,
+                child: Stack(
                   children: [
-                    _buildMeasureField("Neck", "neck"),
-                    _buildMeasureField("Shoulder", "shoulder"),
-                    _buildMeasureField("Chest", "chest"),
-                    _buildMeasureField("Biceps R", "biceps_r"),
-                    _buildMeasureField("Forearms R", "forearms_r"),
-                    _buildMeasureField("Waist", "waist"),
-                    _buildMeasureField("Hips", "hips"),
-                    _buildMeasureField("Thighs R", "thighs_r"),
-                    _buildMeasureField("Calves R", "calves_r"),
-                  ],
-                ),
-              ),
-              // Figure
-              Expanded(
-                flex: 3,
-                child: Column(
-                  children: [
-                    const SizedBox(height: 20),
-                    String svgPath = isMaleFigure ? 'assets/figure/male_figure.svg' : 'assets/figure/female_figure.svg';
-                    SvgPicture.asset(
-                      svgPath,
-                      height: 380,
-                      fit: BoxFit.contain,
+                    // Background Figure
+                    Positioned.fill(
+                      child: SvgPicture.asset(
+                        isMaleFigure ? 'assets/figure/male_figure.svg' : 'assets/figure/female_figure.svg',
+                        width: w,
+                        fit: BoxFit.fitWidth,
+                      ),
                     ),
+                    // Measurement Box Overlays (Percentage based)
+                    _buildPositionedInput("Neck", "neck", h * 0.12, w * 0.43),
+                    _buildPositionedInput("Shoulder", "shoulder", h * 0.18, w * 0.25),
+                    _buildPositionedInput("Chest", "chest", h * 0.24, w * 0.43),
+                    
+                    _buildPositionedInput("Biceps R", "biceps_r", h * 0.32, w * 0.08),
+                    _buildPositionedInput("Biceps L", "biceps_l", h * 0.32, w * 0.76),
+                    
+                    _buildPositionedInput("Forearms R", "forearms_r", h * 0.45, w * 0.04),
+                    _buildPositionedInput("Forearms L", "forearms_l", h * 0.45, w * 0.81),
+                    
+                    _buildPositionedInput("Waist", "waist", h * 0.52, w * 0.43),
+                    _buildPositionedInput("Hips", "hips", h * 0.60, w * 0.43),
+                    
+                    _buildPositionedInput("Thighs R", "thighs_r", h * 0.72, w * 0.30),
+                    _buildPositionedInput("Thighs L", "thighs_l", h * 0.72, w * 0.55),
+                    
+                    _buildPositionedInput("Calves R", "calves_r", h * 0.88, w * 0.30),
+                    _buildPositionedInput("Calves L", "calves_l", h * 0.88, w * 0.55),
                   ],
                 ),
-              ),
-              // Right Column: Biceps L -> Calves L
-              Expanded(
-                flex: 2,
-                child: Column(
-                  children: [
-                    const SizedBox(height: 100), // Push down to align with Biceps
-                    _buildMeasureField("Biceps L", "biceps_l"),
-                    _buildMeasureField("Forearms L", "forearms_l"),
-                    const SizedBox(height: 80), // Push down to align with Thighs
-                    _buildMeasureField("Thighs L", "thighs_l"),
-                    _buildMeasureField("Calves L", "calves_l"),
-                  ],
-                ),
-              ),
-            ],
+              );
+            },
           ),
           const SizedBox(height: 24),
           SizedBox(
@@ -806,6 +798,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 elevation: 0,
               ),
               child: Text("Save Measurements", style: GoogleFonts.workSans(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPositionedInput(String label, String key, double top, double left) {
+    return Positioned(
+      top: top,
+      left: left,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            decoration: BoxDecoration(color: const Color(0xFF4A80F0), borderRadius: BorderRadius.circular(4)),
+            child: Text(label, style: GoogleFonts.workSans(fontSize: 7, fontWeight: FontWeight.bold, color: Colors.white)),
+          ),
+          const SizedBox(height: 2),
+          Container(
+            width: 50,
+            height: 28,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: const Color(0xFF4A80F0).withOpacity(0.3), width: 1),
+              borderRadius: BorderRadius.circular(6),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 4, offset: const Offset(0, 2))],
+            ),
+            alignment: Alignment.center,
+            child: TextField(
+              controller: _getGoalController("body-$key", bodyMeasurements[key]?.toString() ?? ""),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.workSans(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF1A1A1A)),
+              decoration: const InputDecoration(isDense: true, border: InputBorder.none, contentPadding: EdgeInsets.zero, hintText: "0", hintStyle: TextStyle(color: Colors.grey, fontSize: 10)),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onChanged: (val) {
+                 bodyMeasurements[key] = val;
+              },
             ),
           ),
         ],
@@ -893,7 +924,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _saveMeasurements({bool silent = false}) async {
-    final payload = {
+    final Map<String, dynamic> payload = {
       "user_id": userId,
       "gender": isMaleFigure ? "male" : "female",
       "unit": measurementUnit,
