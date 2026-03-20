@@ -741,9 +741,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _buildUnitToggle(),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _buildGenderToggle(),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
               double w = constraints.maxWidth;
@@ -773,24 +773,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     // 3. Top Layer: Measurement Box Overlays
-                    _buildPositionedInput("Neck", "neck", h * 0.10, w * 0.43, alignLeft: true),
-                    _buildPositionedInput("Shoulder", "shoulder", h * 0.16, w * 0.20, alignLeft: true),
-                    _buildPositionedInput("Chest", "chest", h * 0.22, w * 0.43, alignLeft: true),
+                    _buildPositionedInput("Neck", "neck", h * 0.14, w * 0.25, alignLeft: false),
+                    _buildPositionedInput("Shoulder", "shoulder", h * 0.19, w * 0.25, alignLeft: false),
+                    _buildPositionedInput("Chest", "chest", h * 0.24, w * 0.25, alignLeft: false),
                     
-                    _buildPositionedInput("Biceps R", "biceps_r", h * 0.30, w * 0.05, alignLeft: true),
-                    _buildPositionedInput("Biceps L", "biceps_l", h * 0.30, w * 0.82, alignLeft: false),
+                    _buildPositionedInput("Biceps R", "biceps_r", h * 0.29, w * 0.25, alignLeft: false),
+                    _buildPositionedInput("Biceps L", "biceps_l", h * 0.29, w * 0.82, alignLeft: false),
                     
-                    _buildPositionedInput("Forearms R", "forearms_r", h * 0.42, w * 0.02, alignLeft: true),
-                    _buildPositionedInput("Forearms L", "forearms_l", h * 0.42, w * 0.85, alignLeft: false),
+                    _buildPositionedInput("Forearms R", "forearms_r", h * 0.34, w * 0.25, alignLeft: false),
+                    _buildPositionedInput("Forearms L", "forearms_l", h * 0.34, w * 0.82, alignLeft: false),
                     
-                    _buildPositionedInput("Waist", "waist", h * 0.50, w * 0.43, alignLeft: true),
-                    _buildPositionedInput("Hips", "hips", h * 0.58, w * 0.43, alignLeft: true),
+                    _buildPositionedInput("Waist", "waist", h * 0.39, w * 0.25, alignLeft: false),
+                    _buildPositionedInput("Hips", "hips", h * 0.43, w * 0.25, alignLeft: false),
                     
-                    _buildPositionedInput("Thighs R", "thighs_r", h * 0.70, w * 0.28, alignLeft: true),
-                    _buildPositionedInput("Thighs L", "thighs_l", h * 0.70, w * 0.58, alignLeft: false),
+                    _buildPositionedInput("Thighs R", "thighs_r", h * 0.52, w * 0.25, alignLeft: false),
+                    _buildPositionedInput("Thighs L", "thighs_l", h * 0.52, w * 0.82, alignLeft: false),
                     
-                    _buildPositionedInput("Calves R", "calves_r", h * 0.86, w * 0.28, alignLeft: true),
-                    _buildPositionedInput("Calves L", "calves_l", h * 0.86, w * 0.58, alignLeft: false),
+                    _buildPositionedInput("Calves R", "calves_r", h * 0.70, w * 0.25, alignLeft: false),
+                    _buildPositionedInput("Calves L", "calves_l", h * 0.70, w * 0.82, alignLeft: false),
                   ],
                 ),
               );
@@ -824,8 +824,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         crossAxisAlignment: alignLeft ? CrossAxisAlignment.start : CrossAxisAlignment.center,
         children: [
           Container(
-            width: 50,
-            height: 22,
+            width: 40,
+            height: 18,
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border.all(color: const Color(0xFF4A80F0).withOpacity(0.3), width: 1),
@@ -836,7 +836,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: TextField(
               controller: _getGoalController("body-$key", bodyMeasurements[key]?.toString() ?? ""),
               textAlign: alignLeft ? TextAlign.left : TextAlign.center,
-              style: GoogleFonts.workSans(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF1A1A1A)),
+              style: GoogleFonts.workSans(fontSize: 10, fontWeight: FontWeight.w400, color: const Color(0xFF1A1A1A)),
               decoration: InputDecoration(
                 isDense: true, 
                 border: InputBorder.none, 
