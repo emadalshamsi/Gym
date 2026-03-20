@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:typed_data';
 
 void main() {
   // تفعيل التعامل مع أخطاء الخطوط في الويب لـ Zapp
@@ -809,24 +811,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     // 3. Top Layer: Measurement Box Overlays
-                    _buildPositionedInput("Neck", "neck", h * 0.14, w * 0.25, alignLeft: false),
-                    _buildPositionedInput("Shoulder", "shoulder", h * 0.19, w * 0.25, alignLeft: false),
-                    _buildPositionedInput("Chest", "chest", h * 0.24, w * 0.25, alignLeft: false),
+                    _buildPositionedInput("Neck", "neck", h * 0.146, w * 0.22, alignLeft: false),
+                    _buildPositionedInput("Shoulder", "shoulder", h * 0.195, w * 0.22, alignLeft: false),
+                    _buildPositionedInput("Chest", "chest", h * 0.245, w * 0.22, alignLeft: false),
                     
-                    _buildPositionedInput("Biceps R", "biceps_r", h * 0.29, w * 0.25, alignLeft: false),
-                    _buildPositionedInput("Biceps L", "biceps_l", h * 0.29, w * 0.82, alignLeft: false),
+                    _buildPositionedInput("Biceps R", "biceps_r", h * 0.29, w * 0.22, alignLeft: false),
+                    _buildPositionedInput("Biceps L", "biceps_l", h * 0.29, w * 0.85, alignLeft: false),
                     
-                    _buildPositionedInput("Forearms R", "forearms_r", h * 0.34, w * 0.25, alignLeft: false),
-                    _buildPositionedInput("Forearms L", "forearms_l", h * 0.34, w * 0.82, alignLeft: false),
+                    _buildPositionedInput("Forearms R", "forearms_r", h * 0.34, w * 0.22, alignLeft: false),
+                    _buildPositionedInput("Forearms L", "forearms_l", h * 0.34, w * 0.85, alignLeft: false),
                     
-                    _buildPositionedInput("Waist", "waist", h * 0.39, w * 0.25, alignLeft: false),
-                    _buildPositionedInput("Hips", "hips", h * 0.43, w * 0.25, alignLeft: false),
+                    _buildPositionedInput("Waist", "waist", h * 0.388, w * 0.22, alignLeft: false),
+                    _buildPositionedInput("Hips", "hips", h * 0.436, w * 0.22, alignLeft: false),
                     
-                    _buildPositionedInput("Thighs R", "thighs_r", h * 0.52, w * 0.25, alignLeft: false),
-                    _buildPositionedInput("Thighs L", "thighs_l", h * 0.52, w * 0.82, alignLeft: false),
+                    _buildPositionedInput("Thighs R", "thighs_r", h * 0.532, w * 0.22, alignLeft: false),
+                    _buildPositionedInput("Thighs L", "thighs_l", h * 0.532, w * 0.85, alignLeft: false),
                     
-                    _buildPositionedInput("Calves R", "calves_r", h * 0.70, w * 0.25, alignLeft: false),
-                    _buildPositionedInput("Calves L", "calves_l", h * 0.70, w * 0.82, alignLeft: false),
+                    _buildPositionedInput("Calves R", "calves_r", h * 0.725, w * 0.22, alignLeft: false),
+                    _buildPositionedInput("Calves L", "calves_l", h * 0.725, w * 0.85, alignLeft: false),
                   ],
                 ),
               );
@@ -1586,54 +1588,55 @@ Widget _buildWaterBottle(double progress) {
   }
 
   void _showUploadPhotosDialog() {
-     final controllers = {
-       'front': TextEditingController(),
-       'side': TextEditingController(),
-       'back': TextEditingController(),
-     };
+     final Map<String, String?> pickedImages = {'front': null, 'side': null, 'back': null};
      bool isUploading = false;
+     final ImagePicker picker = ImagePicker();
 
      showDialog<void>(
        context: context,
        builder: (ctx) => StatefulBuilder(builder: (context, setS) {
          return AlertDialog(
            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-           title: Text("Upload Progress Photos", style: GoogleFonts.workSans(fontWeight: FontWeight.bold)),
-           content: Column(
-             mainAxisSize: MainAxisSize.min,
-             children: [
-               Text("Enter image URLs for each side:", style: GoogleFonts.workSans(fontSize: 13, color: Colors.grey[600])),
-               const SizedBox(height: 16),
-               _buildUrlField(controllers['front']!, "Front View"),
-               const SizedBox(height: 10),
-               _buildUrlField(controllers['side']!, "Side View"),
-               const SizedBox(height: 10),
-               _buildUrlField(controllers['back']!, "Back View"),
-               if (isUploading) ...[
+           title: Text("Add Progress Photos", style: GoogleFonts.workSans(fontWeight: FontWeight.bold)),
+           content: SingleChildScrollView(
+             child: Column(
+               mainAxisSize: MainAxisSize.min,
+               children: [
+                 Text("Select photos from your device:", style: GoogleFonts.workSans(fontSize: 13, color: Colors.grey[600])),
                  const SizedBox(height: 20),
-                 const CircularProgressIndicator(),
-               ]
-             ],
+                 _buildPhotoPickerItem("Front View", pickedImages['front'], (base64) => setS(() => pickedImages['front'] = base64), picker),
+                 const SizedBox(height: 16),
+                 _buildPhotoPickerItem("Side View", pickedImages['side'], (base64) => setS(() => pickedImages['side'] = base64), picker),
+                 const SizedBox(height: 16),
+                 _buildPhotoPickerItem("Back View", pickedImages['back'], (base64) => setS(() => pickedImages['back'] = base64), picker),
+                 if (isUploading) ...[
+                   const SizedBox(height: 20),
+                   const CircularProgressIndicator(),
+                 ]
+               ],
+             ),
            ),
            actions: [
              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
              ElevatedButton(
-               onPressed: isUploading ? null : () async {
+               onPressed: isUploading || (pickedImages['front'] == null && pickedImages['side'] == null && pickedImages['back'] == null) ? null : () async {
                  setS(() => isUploading = true);
                  try {
-                   for (var entry in controllers.entries) {
-                     if (entry.value.text.isNotEmpty) {
-                        await _uploadPhoto(entry.value.text, entry.key);
+                   for (var entry in pickedImages.entries) {
+                     if (entry.value != null) {
+                        await _uploadPhoto(entry.value!, entry.key);
                      }
                    }
                    await _fetchProgressPhotos();
                    if (mounted) Navigator.pop(ctx);
+                 } catch (e) {
+                   debugPrint("Upload Error: $e");
                  } finally {
                    setS(() => isUploading = false);
                  }
                },
-               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4A80F0)),
-               child: const Text("Upload All"),
+               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4A80F0), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+               child: const Text("Save Photos"),
              ),
            ],
          );
@@ -1641,23 +1644,70 @@ Widget _buildWaterBottle(double progress) {
      );
   }
 
-  Widget _buildUrlField(TextEditingController controller, String label) {
-    return TextField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: "https://example.com/photo.jpg",
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+  Widget _buildPhotoPickerItem(String label, String? base64Data, Function(String?) onSelected, ImagePicker picker) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: GoogleFonts.workSans(fontSize: 12, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        InkWell(
+          onTap: () => _pickImageSource(onSelected, picker),
+          child: Container(
+            height: 60,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: base64Data != null ? Colors.green.withOpacity(0.05) : const Color(0xFFF5F9FF),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: base64Data != null ? Colors.green.withOpacity(0.3) : Colors.grey[200]!),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(base64Data != null ? Icons.check_circle : Icons.camera_alt, color: base64Data != null ? Colors.green : Colors.grey[400], size: 20),
+                const SizedBox(width: 8),
+                Text(base64Data != null ? "Photo Ready" : "Tap to Select", style: GoogleFonts.workSans(fontSize: 12, color: base64Data != null ? Colors.green : Colors.grey[500])),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _pickImageSource(Function(String?) onSelected, ImagePicker picker) async {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(leading: const Icon(Icons.camera), title: const Text("Camera"), onTap: () async {
+               Navigator.pop(ctx);
+               final XFile? photo = await picker.pickImage(source: ImageSource.camera, maxWidth: 1024, imageQuality: 70);
+               if (photo != null) {
+                 final bytes = await photo.readAsBytes();
+                 onSelected("data:image/jpeg;base64,${base64Encode(bytes)}");
+               }
+            }),
+            ListTile(leading: const Icon(Icons.photo_library), title: const Text("Gallery"), onTap: () async {
+               Navigator.pop(ctx);
+               final XFile? image = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1024, imageQuality: 70);
+               if (image != null) {
+                 final bytes = await image.readAsBytes();
+                 onSelected("data:image/jpeg;base64,${base64Encode(bytes)}");
+               }
+            }),
+          ],
+        ),
       ),
     );
   }
 
-  Future<void> _uploadPhoto(String url, String side) async {
+  Future<void> _uploadPhoto(String base64, String side) async {
     final res = await http.post(
       Uri.parse("$baseUrl/upload_progress_photo"),
       headers: {"Content-Type": "application/json"},
-      body: json.encode({"user_id": userId, "photo_url": url, "side": side}),
+      body: json.encode({"user_id": userId, "photo_url": base64, "side": side}),
     );
     if (res.statusCode != 200) {
       debugPrint("Upload failed for $side: ${res.body}");
