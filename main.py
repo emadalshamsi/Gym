@@ -131,6 +131,7 @@ class ProgressPhoto(BaseModel):
     user_id: str
     photo_url: str
     side: str # 'front', 'side', 'back'
+    created_at: Optional[str] = None
 
 # --- 1. تسجيل الوجبات (Log Meal) ---
 @app.post("/log_meal")
@@ -442,11 +443,15 @@ async def get_stats(user_id: str = Query(...), days: int = Query(7)):
 @app.post("/upload_progress_photo")
 async def upload_progress_photo(data: ProgressPhoto):
     try:
-        res = supabase.table("progress_photos").insert({
+        payload = {
             "user_id": data.user_id,
             "photo_url": data.photo_url,
             "side": data.side
-        }).execute()
+        }
+        if data.created_at:
+            payload["created_at"] = data.created_at
+            
+        res = supabase.table("progress_photos").insert(payload).execute()
         return {"status": "success", "data": res.data[0] if res.data else None}
     except Exception as e:
         logger.error(f"Upload Photo Error: {str(e)}")

@@ -1591,6 +1591,7 @@ Widget _buildWaterBottle(double progress) {
      final Map<String, String?> pickedImages = {'front': null, 'side': null, 'back': null};
      bool isUploading = false;
      final ImagePicker picker = ImagePicker();
+     DateTime uploadDate = DateTime.now();
 
      showDialog<void>(
        context: context,
@@ -1602,6 +1603,32 @@ Widget _buildWaterBottle(double progress) {
              child: Column(
                mainAxisSize: MainAxisSize.min,
                children: [
+                 // Date Selector
+                 GestureDetector(
+                   onTap: () async {
+                     final d = await showDatePicker(
+                       context: context,
+                       initialDate: uploadDate,
+                       firstDate: DateTime.now().subtract(const Duration(days: 30)),
+                       lastDate: DateTime.now(),
+                     );
+                     if (d != null) setS(() => uploadDate = d);
+                   },
+                   child: Container(
+                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                     decoration: BoxDecoration(color: const Color(0xFFF5F9FF), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.withOpacity(0.2))),
+                     child: Row(
+                       children: [
+                         const Icon(Icons.calendar_today, size: 18, color: Color(0xFF4A80F0)),
+                         const SizedBox(width: 10),
+                         Text(DateFormat('EEEE, MMM dd').format(uploadDate), style: GoogleFonts.workSans(fontWeight: FontWeight.bold, color: const Color(0xFF4A80F0))),
+                         const Spacer(),
+                         const Icon(Icons.edit, size: 14, color: Color(0xFF4A80F0)),
+                       ],
+                     ),
+                   ),
+                 ),
+                 const SizedBox(height: 20),
                  Text("Select photos from your device:", style: GoogleFonts.workSans(fontSize: 13, color: Colors.grey[600])),
                  const SizedBox(height: 20),
                  _buildPhotoPickerItem("Front View", pickedImages['front'], (base64) => setS(() => pickedImages['front'] = base64), picker),
@@ -1622,9 +1649,10 @@ Widget _buildWaterBottle(double progress) {
                onPressed: isUploading || (pickedImages['front'] == null && pickedImages['side'] == null && pickedImages['back'] == null) ? null : () async {
                  setS(() => isUploading = true);
                  try {
+                   final dateStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(uploadDate);
                    for (var entry in pickedImages.entries) {
                      if (entry.value != null) {
-                        await _uploadPhoto(entry.value!, entry.key);
+                        await _uploadPhoto(entry.value!, entry.key, customDate: dateStr);
                      }
                    }
                    await _fetchProgressPhotos();
@@ -1703,11 +1731,16 @@ Widget _buildWaterBottle(double progress) {
     );
   }
 
-  Future<void> _uploadPhoto(String base64, String side) async {
+  Future<void> _uploadPhoto(String base64, String side, {String? customDate}) async {
     final res = await http.post(
       Uri.parse("$baseUrl/upload_progress_photo"),
       headers: {"Content-Type": "application/json"},
-      body: json.encode({"user_id": userId, "photo_url": base64, "side": side}),
+      body: json.encode({
+        "user_id": userId, 
+        "photo_url": base64, 
+        "side": side,
+        "created_at": customDate
+      }),
     );
     if (res.statusCode != 200) {
       debugPrint("Upload failed for $side: ${res.body}");
