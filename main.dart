@@ -747,7 +747,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           LayoutBuilder(
             builder: (context, constraints) {
               double w = constraints.maxWidth;
-              double h = w * 1.5; // Aspect ratio for the figure area (adjusted for better fit)
+              double h = w * 1.355; // Aspect ratio for the figure area (matches 1450/1070 images)
               
               return SizedBox(
                 width: w,
@@ -773,24 +773,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     // 3. Top Layer: Measurement Box Overlays
-                    _buildPositionedInput("Neck", "neck", h * 0.12, w * 0.43, alignLeft: true),
-                    _buildPositionedInput("Shoulder", "shoulder", h * 0.18, w * 0.25, alignLeft: true),
-                    _buildPositionedInput("Chest", "chest", h * 0.24, w * 0.43, alignLeft: true),
+                    _buildPositionedInput("Neck", "neck", h * 0.10, w * 0.43, alignLeft: true),
+                    _buildPositionedInput("Shoulder", "shoulder", h * 0.16, w * 0.20, alignLeft: true),
+                    _buildPositionedInput("Chest", "chest", h * 0.22, w * 0.43, alignLeft: true),
                     
-                    _buildPositionedInput("Biceps R", "biceps_r", h * 0.32, w * 0.08, alignLeft: true),
-                    _buildPositionedInput("Biceps L", "biceps_l", h * 0.32, w * 0.76, alignLeft: false),
+                    _buildPositionedInput("Biceps R", "biceps_r", h * 0.30, w * 0.05, alignLeft: true),
+                    _buildPositionedInput("Biceps L", "biceps_l", h * 0.30, w * 0.82, alignLeft: false),
                     
-                    _buildPositionedInput("Forearms R", "forearms_r", h * 0.45, w * 0.04, alignLeft: true),
-                    _buildPositionedInput("Forearms L", "forearms_l", h * 0.45, w * 0.81, alignLeft: false),
+                    _buildPositionedInput("Forearms R", "forearms_r", h * 0.42, w * 0.02, alignLeft: true),
+                    _buildPositionedInput("Forearms L", "forearms_l", h * 0.42, w * 0.85, alignLeft: false),
                     
-                    _buildPositionedInput("Waist", "waist", h * 0.52, w * 0.43, alignLeft: true),
-                    _buildPositionedInput("Hips", "hips", h * 0.60, w * 0.43, alignLeft: true),
+                    _buildPositionedInput("Waist", "waist", h * 0.50, w * 0.43, alignLeft: true),
+                    _buildPositionedInput("Hips", "hips", h * 0.58, w * 0.43, alignLeft: true),
                     
-                    _buildPositionedInput("Thighs R", "thighs_r", h * 0.72, w * 0.30, alignLeft: true),
-                    _buildPositionedInput("Thighs L", "thighs_l", h * 0.72, w * 0.55, alignLeft: false),
+                    _buildPositionedInput("Thighs R", "thighs_r", h * 0.70, w * 0.28, alignLeft: true),
+                    _buildPositionedInput("Thighs L", "thighs_l", h * 0.70, w * 0.58, alignLeft: false),
                     
-                    _buildPositionedInput("Calves R", "calves_r", h * 0.88, w * 0.30, alignLeft: true),
-                    _buildPositionedInput("Calves L", "calves_l", h * 0.88, w * 0.55, alignLeft: false),
+                    _buildPositionedInput("Calves R", "calves_r", h * 0.86, w * 0.28, alignLeft: true),
+                    _buildPositionedInput("Calves L", "calves_l", h * 0.86, w * 0.58, alignLeft: false),
                   ],
                 ),
               );
@@ -831,7 +831,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 2),
           Container(
             width: 50,
-            height: 28,
+            height: 22,
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border.all(color: const Color(0xFF4A80F0).withOpacity(0.3), width: 1),
