@@ -100,6 +100,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   double leftScale = 1.0, rightScale = 1.0;
   Offset leftOffset = Offset.zero, rightOffset = Offset.zero;
   bool isAdjustMode = false;
+  bool isAligning = false;
 
   final Map<String, TextEditingController> _goalControllers = {};
   
@@ -1808,6 +1809,14 @@ Widget _buildWaterBottle(double progress) {
           ),
         ),
         const SizedBox(width: 8),
+        if (leftPhotoId != null && rightPhotoId != null)
+          isAligning 
+          ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+          : IconButton(
+            onPressed: _autoAlignWithAI,
+            icon: const Icon(Icons.auto_fix_high, color: Color(0xFF4A80F0)),
+            tooltip: "Smart Align (AI)",
+          ),
         IconButton(
           onPressed: () => setState(() {
             isAdjustMode = !isAdjustMode;
@@ -2541,6 +2550,53 @@ Widget _buildWaterBottle(double progress) {
     }
     return spots;
   } // End of _getForecastSpots
+
+  Future<void> _autoAlignWithAI() async {
+    if (leftPhotoId == null || rightPhotoId == null) return;
+    
+    final sidePhotos = progressPhotos.where((p) => p['side'].toString().toLowerCase() == selectedPhotoSide.toLowerCase()).toList();
+    final leftP = sidePhotos.firstWhere((p) => p['id'].toString() == leftPhotoId, orElse: () => null);
+    final rightP = sidePhotos.firstWhere((p) => p['id'].toString() == rightPhotoId, orElse: () => null);
+    
+    if (leftP == null || rightP == null) return;
+
+    setState(() => isAligning = true);
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/align_photos'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'img1_base64': leftP['photo_url'],
+          'img2_base64': rightP['photo_url'],
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['status'] == 'success') {
+          setState(() {
+            // We align the right photo to match the left one
+            rightScale = (data['alignment']['scale'] as num).toDouble();
+            // Offset logic: Gemini returns normalized shift 0-1
+            // We apply it to our 300x360 comparison area
+            rightOffset = Offset(
+              (data['alignment']['dx'] as num).toDouble() * 300, 
+              (data['alignment']['dy'] as num).toDouble() * 360
+            );
+            isAdjustMode = true; // Switch to adjust mode to show current alignment
+          });
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("AI Alignment Complete!")));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("AI Error: ${data['error']}")));
+        }
+      }
+    } catch (e) {
+      debugPrint("AutoAlign Error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Connection to AI failed.")));
+    } finally {
+      if (mounted) setState(() => isAligning = false);
+    }
+  }
 } // End of _DashboardScreenState
 
 class DashedDivider extends StatelessWidget {

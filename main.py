@@ -98,7 +98,11 @@ class StepsLogRequest(BaseModel):
 
 class MealUpdateRequest(BaseModel):
     item_id: str
-    new_food: str
+    updates: dict
+
+class AlignPhotosRequest(BaseModel):
+    img1_base64: str
+    img2_base64: str
 
 class GoalsUpdateRequest(BaseModel):
     user_id: str
@@ -464,6 +468,75 @@ async def get_progress_photos(user_id: str = Query(...)):
         return {"status": "success", "data": res.data}
     except Exception as e:
         logger.error(f"Get Photos Error: {str(e)}")
+        return {"error": str(e), "status": "failed"}
+@app.post("/align_photos")
+async def align_photos(data: AlignPhotosRequest):
+    """استخدام Gemini لمحاذاة صورتين بناءً على ملامح الجسم"""
+    if not GEMINI_API_KEY:
+        return {"error": "API Key missing", "status": "failed"}
+
+    # تنظيف الـ Base64 (إزالة البادئة إن وجدت)
+    def clean_b64(b64):
+        if "," in b64: return b64.split(",")[1]
+        return b64
+
+    img1 = clean_b64(data.img1_base64)
+    img2 = clean_b64(data.img2_base64)
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+    
+    prompt = (
+        "Analyze these two progress photos. Detect the precise [x, y] coordinates for: "
+        "1. Nose, 2. Left Shoulder, 3. Right Shoulder in BOTH images. "
+        "Coordinates must be normalized from 0 to 1000 (where 0,0 is top-left). "
+        "Return ONLY a JSON object: "
+        '{"img1": {"nose": [x,y], "l_sh": [x,y], "r_sh": [x,y]}, '
+        '"img2": {"nose": [x,y], "l_sh": [x,y], "r_sh": [x,y]}}'
+    )
+
+    payload = {
+        "contents": [{
+            "parts": [
+                {"text": prompt},
+                {"inline_data": {"mime_type": "image/jpeg", "data": img1}},
+                {"inline_data": {"mime_type": "image/jpeg", "data": img2}}
+            ]
+        }]
+    }
+
+    try:
+        response = requests.post(url, json=payload, timeout=20)
+        res_data = response.json()
+        raw_text = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
+        
+        match = re.search(r'(\{.*\})', raw_text, re.DOTALL)
+        if not match: return {"error": "AI failed to return JSON", "status": "failed"}
+        
+        pts = json.loads(match.group(1))
+        
+        # حساب المحاذاة (Align img2 to img1)
+        # 1. Scale based on shoulder width
+        w1 = ((pts['img1']['l_sh'][0] - pts['img1']['r_sh'][0])**2 + (pts['img1']['l_sh'][1] - pts['img1']['r_sh'][1])**2)**0.5
+        w2 = ((pts['img2']['l_sh'][0] - pts['img2']['r_sh'][0])**2 + (pts['img2']['l_sh'][1] - pts['img2']['r_sh'][1])**2)**0.5
+        
+        if w2 == 0: return {"error": "Landmarks not found", "status": "failed"}
+        scale = w1 / w2
+        
+        # 2. Offset based on nose position
+        # We want: img2_nose * scale + offset = img1_nose
+        dx = pts['img1']['nose'][0] - (pts['img2']['nose'][0] * scale)
+        dy = pts['img1']['nose'][1] - (pts['img2']['nose'][1] * scale)
+
+        return {
+            "status": "success",
+            "alignment": {
+                "scale": scale,
+                "dx": dx / 1000.0, # Convert back to normalized 0-1 for Flutter
+                "dy": dy / 1000.0
+            }
+        }
+    except Exception as e:
+        logger.error(f"Align Error: {e}")
         return {"error": str(e), "status": "failed"}
 
 if __name__ == "__main__":
