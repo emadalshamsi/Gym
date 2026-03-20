@@ -2674,7 +2674,7 @@ class _FullScreenAlignmentPageState extends State<_FullScreenAlignmentPage> {
             child: Container(
               padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).padding.bottom + 20),
               decoration: const BoxDecoration(
-                color: Color(0xEE111827),
+                color: Color(0xAA111827),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
               child: Column(
