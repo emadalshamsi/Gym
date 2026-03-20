@@ -737,7 +737,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("Body Measurement Tracking", style: GoogleFonts.workSans(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1A1A1A))),
+              Text("Body Measurement", style: GoogleFonts.workSans(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1A1A1A))),
               _buildUnitToggle(),
             ],
           ),
@@ -758,6 +758,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Positioned.fill(
                       child: Image.asset(
                         isMaleFigure ? 'assets/figure/male_figure.jpeg' : 'assets/figure/female_figure.jpeg',
+                        key: ValueKey('fig-jpg-$isMaleFigure'),
                         width: w,
                         fit: BoxFit.fitWidth,
                       ),
@@ -766,6 +767,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Positioned.fill(
                       child: SvgPicture.asset(
                         isMaleFigure ? 'assets/figure/male_figure.svg' : 'assets/figure/female_figure.svg',
+                        key: ValueKey('fig-svg-$isMaleFigure'),
                         width: w,
                         fit: BoxFit.fitWidth,
                       ),
