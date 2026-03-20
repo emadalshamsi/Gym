@@ -90,6 +90,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     "Progress Photo": {"min": null, "max": null, "days": [false, false, false, false, false, true, false], "icon": "P7_photo.svg"},
   };
 
+  // Progress Photos State
+  List<dynamic> progressPhotos = [];
+  String selectedPhotoSide = 'Front';
+  String? leftPhotoId, rightPhotoId;
+  double comparisonValue = 0.5;
+
   final Map<String, TextEditingController> _goalControllers = {};
   
   TextEditingController _getGoalController(String key, String initialValue) {
@@ -115,6 +121,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _fetchInitialData() async {
     await _fetchData();
     await _fetchStats();
+    await _fetchProgressPhotos();
+  }
+
+  Future<void> _fetchProgressPhotos() async {
+    final url = "$baseUrl/get_progress_photos?user_id=$userId";
+    try {
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        final data = json.decode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+        if (data['status'] == 'success') {
+          setState(() {
+            progressPhotos = data['data'] ?? [];
+            // Auto-select dates if available
+            if (progressPhotos.isNotEmpty) {
+               final filtered = progressPhotos.where((p) => p['side'].toString().toLowerCase() == selectedPhotoSide.toLowerCase()).toList();
+               if (filtered.length >= 2) {
+                 leftPhotoId = filtered[1]['id'].toString();
+                 rightPhotoId = filtered[0]['id'].toString();
+               } else if (filtered.length == 1) {
+                 rightPhotoId = filtered[0]['id'].toString();
+               }
+            }
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Fetch Photos Error: $e");
+    }
   }
 
   Future<void> _fetchData([DateTime? date]) async {
@@ -466,6 +500,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 20),
             _buildBodyTrackingSection(),
+            const SizedBox(height: 20),
+            _buildProgressPhotoSection(),
             const SizedBox(height: 100),
           ],
         ),
@@ -1503,6 +1539,8 @@ Widget _buildWaterBottle(double progress) {
               isMenuOpen = false;
             });
           }),
+          const SizedBox(height: 12),
+          _buildFabMenuItem(Icons.add_a_photo, "Progress Photo", Colors.pink, _showUploadPhotosDialog),
           const SizedBox(height: 20),
         ],
         FloatingActionButton(
@@ -1547,11 +1585,240 @@ Widget _buildWaterBottle(double progress) {
     );
   }
 
+  void _showUploadPhotosDialog() {
+     final controllers = {
+       'front': TextEditingController(),
+       'side': TextEditingController(),
+       'back': TextEditingController(),
+     };
+     bool isUploading = false;
+
+     showDialog<void>(
+       context: context,
+       builder: (ctx) => StatefulBuilder(builder: (context, setS) {
+         return AlertDialog(
+           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+           title: Text("Upload Progress Photos", style: GoogleFonts.workSans(fontWeight: FontWeight.bold)),
+           content: Column(
+             mainAxisSize: MainAxisSize.min,
+             children: [
+               Text("Enter image URLs for each side:", style: GoogleFonts.workSans(fontSize: 13, color: Colors.grey[600])),
+               const SizedBox(height: 16),
+               _buildUrlField(controllers['front']!, "Front View"),
+               const SizedBox(height: 10),
+               _buildUrlField(controllers['side']!, "Side View"),
+               const SizedBox(height: 10),
+               _buildUrlField(controllers['back']!, "Back View"),
+               if (isUploading) ...[
+                 const SizedBox(height: 20),
+                 const CircularProgressIndicator(),
+               ]
+             ],
+           ),
+           actions: [
+             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+             ElevatedButton(
+               onPressed: isUploading ? null : () async {
+                 setS(() => isUploading = true);
+                 try {
+                   for (var entry in controllers.entries) {
+                     if (entry.value.text.isNotEmpty) {
+                        await _uploadPhoto(entry.value.text, entry.key);
+                     }
+                   }
+                   await _fetchProgressPhotos();
+                   if (mounted) Navigator.pop(ctx);
+                 } finally {
+                   setS(() => isUploading = false);
+                 }
+               },
+               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4A80F0)),
+               child: const Text("Upload All"),
+             ),
+           ],
+         );
+       }),
+     );
+  }
+
+  Widget _buildUrlField(TextEditingController controller, String label) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: "https://example.com/photo.jpg",
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+    );
+  }
+
+  Future<void> _uploadPhoto(String url, String side) async {
+    final res = await http.post(
+      Uri.parse("$baseUrl/upload_progress_photo"),
+      headers: {"Content-Type": "application/json"},
+      body: json.encode({"user_id": userId, "photo_url": url, "side": side}),
+    );
+    if (res.statusCode != 200) {
+      debugPrint("Upload failed for $side: ${res.body}");
+    }
+  }
+
   Widget _buildMenuOverlay() {
     return GestureDetector(
       onTap: () => setState(() => isMenuOpen = false),
       child: Container(color: Colors.black.withOpacity(0.4)),
     );
+  }
+
+  Widget _buildProgressPhotoSection() {
+    final sidePhotos = progressPhotos.where((p) => p['side'].toString().toLowerCase() == selectedPhotoSide.toLowerCase()).toList();
+    
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Progress Photo", style: GoogleFonts.workSans(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1A1A1A))),
+          const SizedBox(height: 16),
+          _buildComparisonControls(sidePhotos),
+          const SizedBox(height: 20),
+          _buildComparisonSlider(sidePhotos),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildComparisonControls(List<dynamic> sidePhotos) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _buildDropdown("Date 1", leftPhotoId, sidePhotos, (v) => setState(() => leftPhotoId = v)),
+          const SizedBox(width: 8),
+          _buildDropdown("Side", selectedPhotoSide, ["Front", "Side", "Back"], (v) {
+             setState(() {
+               selectedPhotoSide = v!;
+               // Auto-reset dates for new side
+               final filtered = progressPhotos.where((p) => p['side'].toString().toLowerCase() == v.toLowerCase()).toList();
+               if (filtered.length >= 2) {
+                 leftPhotoId = filtered[1]['id'].toString();
+                 rightPhotoId = filtered[0]['id'].toString();
+               } else {
+                 leftPhotoId = null;
+                 rightPhotoId = filtered.isNotEmpty ? filtered[0]['id'].toString() : null;
+               }
+             });
+          }),
+          const SizedBox(width: 8),
+          _buildDropdown("Date 2", rightPhotoId, sidePhotos, (v) => setState(() => rightPhotoId = v)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDropdown(String label, String? currentId, dynamic items, Function(String?) onChanged) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: const Color(0xFFF5F9FF), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey[200]!)),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: currentId,
+          hint: Text(label, style: GoogleFonts.workSans(fontSize: 11)),
+          style: GoogleFonts.workSans(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.bold),
+          items: items is List<String> 
+            ? items.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList()
+            : items.map<DropdownMenuItem<String>>((p) => DropdownMenuItem(value: p['id'].toString(), child: Text(DateFormat('MMM dd').format(DateTime.parse(p['created_at']))))).toList(),
+          onChanged: (v) => onChanged(v),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildComparisonSlider(List<dynamic> sidePhotos) {
+    if (sidePhotos.isEmpty) {
+      return Container(
+        height: 300,
+        width: double.infinity,
+        decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(16)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.photo_library, size: 40, color: Colors.grey[300]),
+            const SizedBox(height: 10),
+            Text("No photos uploaded yet.", style: GoogleFonts.workSans(color: Colors.grey[400])),
+          ],
+        ),
+      );
+    }
+
+    final leftPhoto = sidePhotos.firstWhere((p) => p['id'].toString() == leftPhotoId, orElse: () => sidePhotos.first);
+    final rightPhoto = sidePhotos.firstWhere((p) => p['id'].toString() == rightPhotoId, orElse: () => sidePhotos.length > 1 ? sidePhotos[1] : sidePhotos.first);
+
+    return LayoutBuilder(builder: (context, constraints) {
+        double width = constraints.maxWidth;
+        double height = width * 1.0; // Square-ish comparison
+
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: SizedBox(
+            height: height,
+            width: width,
+            child: Stack(
+              children: [
+                // Right photo (background)
+                Positioned.fill(child: Image.network(rightPhoto['photo_url'], fit: BoxFit.cover, errorBuilder: (c, e, s) => Container(color: Colors.grey[200], child: const Icon(Icons.error)))),
+                
+                // Left photo (foreground with clipper)
+                Positioned.fill(
+                  child: AnimatedBuilder(
+                    animation: AlwaysStoppedAnimation(comparisonValue),
+                    builder: (context, _) {
+                      return ClipRect(
+                        clipper: _SliderClipper(comparisonValue),
+                        child: Image.network(leftPhoto['photo_url'], fit: BoxFit.cover, errorBuilder: (c, e, s) => Container(color: Colors.grey[100], child: const Icon(Icons.error))),
+                      );
+                    },
+                  ),
+                ),
+                
+                // Slider Handle
+                Positioned(
+                  left: width * comparisonValue - 15,
+                  top: 0,
+                  bottom: 0,
+                  child: GestureDetector(
+                    onHorizontalDragUpdate: (details) {
+                      setState(() {
+                        comparisonValue = (comparisonValue + details.primaryDelta! / width).clamp(0.0, 1.0);
+                      });
+                    },
+                    child: Center(
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: const BoxDecoration(color: Color(0xFF4A80F0), shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)]),
+                        child: const Icon(Icons.compare_arrows, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ),
+                ),
+                
+                // Separator Line
+                Positioned(
+                  left: width * comparisonValue - 1,
+                  top: 0,
+                  bottom: 0,
+                  child: Container(width: 2, color: Colors.white.withOpacity(0.5)),
+                ),
+              ],
+            ),
+          ),
+        );
+      });
   }
 
   void _showWaterDialog() {
@@ -2192,3 +2459,16 @@ class DashboardDashedLinePainter extends CustomPainter {
 }
 
 int val(int i) => (i * 137 + 42);
+
+class _SliderClipper extends CustomClipper<Rect> {
+  final double value;
+  _SliderClipper(this.value);
+
+  @override
+  Rect getClip(Size size) {
+    return Rect.fromLTRB(0, 0, size.width * value, size.height);
+  }
+
+  @override
+  bool shouldReclip(_SliderClipper oldClipper) => oldClipper.value != value;
+}

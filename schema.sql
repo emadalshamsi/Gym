@@ -79,3 +79,12 @@ CREATE TABLE IF NOT EXISTS public.body_measurements (
     calves_l DECIMAL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- 6. Progress Photos Table
+CREATE TABLE IF NOT EXISTS public.progress_photos (
+    id BIGSERIAL PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    photo_url TEXT NOT NULL,
+    side TEXT NOT NULL, -- 'front', 'side', 'back'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);

@@ -127,6 +127,11 @@ class BodyMeasurementsRequest(BaseModel):
     calves_r: Optional[float] = None
     calves_l: Optional[float] = None
 
+class ProgressPhoto(BaseModel):
+    user_id: str
+    photo_url: str
+    side: str # 'front', 'side', 'back'
+
 # --- 1. تسجيل الوجبات (Log Meal) ---
 @app.post("/log_meal")
 async def log_meal(data: MealLogRequest):
@@ -431,6 +436,29 @@ async def get_stats(user_id: str = Query(...), days: int = Query(7)):
         }
     except Exception as e:
         logger.error(f"Stats Error: {str(e)}")
+        return {"error": str(e), "status": "failed"}
+
+
+@app.post("/upload_progress_photo")
+async def upload_progress_photo(data: ProgressPhoto):
+    try:
+        res = supabase.table("progress_photos").insert({
+            "user_id": data.user_id,
+            "photo_url": data.photo_url,
+            "side": data.side
+        }).execute()
+        return {"status": "success", "data": res.data[0] if res.data else None}
+    except Exception as e:
+        logger.error(f"Upload Photo Error: {str(e)}")
+        return {"error": str(e), "status": "failed"}
+
+@app.get("/get_progress_photos")
+async def get_progress_photos(user_id: str = Query(...)):
+    try:
+        res = supabase.table("progress_photos").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
+        return {"status": "success", "data": res.data}
+    except Exception as e:
+        logger.error(f"Get Photos Error: {str(e)}")
         return {"error": str(e), "status": "failed"}
 
 if __name__ == "__main__":
