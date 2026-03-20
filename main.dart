@@ -754,7 +754,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 height: h,
                 child: Stack(
                   children: [
-                    // Background Figure
+                    // 1. Bottom Layer: JPEG Figure
+                    Positioned.fill(
+                      child: Image.asset(
+                        isMaleFigure ? 'assets/figure/male_figure.jpeg' : 'assets/figure/female_figure.jpeg',
+                        width: w,
+                        fit: BoxFit.fitWidth,
+                      ),
+                    ),
+                    // 2. Middle Layer: SVG Figure
                     Positioned.fill(
                       child: SvgPicture.asset(
                         isMaleFigure ? 'assets/figure/male_figure.svg' : 'assets/figure/female_figure.svg',
@@ -762,25 +770,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         fit: BoxFit.fitWidth,
                       ),
                     ),
-                    // Measurement Box Overlays (Percentage based)
-                    _buildPositionedInput("Neck", "neck", h * 0.12, w * 0.43),
-                    _buildPositionedInput("Shoulder", "shoulder", h * 0.18, w * 0.25),
-                    _buildPositionedInput("Chest", "chest", h * 0.24, w * 0.43),
+                    // 3. Top Layer: Measurement Box Overlays
+                    _buildPositionedInput("Neck", "neck", h * 0.12, w * 0.43, alignLeft: true),
+                    _buildPositionedInput("Shoulder", "shoulder", h * 0.18, w * 0.25, alignLeft: true),
+                    _buildPositionedInput("Chest", "chest", h * 0.24, w * 0.43, alignLeft: true),
                     
-                    _buildPositionedInput("Biceps R", "biceps_r", h * 0.32, w * 0.08),
-                    _buildPositionedInput("Biceps L", "biceps_l", h * 0.32, w * 0.76),
+                    _buildPositionedInput("Biceps R", "biceps_r", h * 0.32, w * 0.08, alignLeft: true),
+                    _buildPositionedInput("Biceps L", "biceps_l", h * 0.32, w * 0.76, alignLeft: false),
                     
-                    _buildPositionedInput("Forearms R", "forearms_r", h * 0.45, w * 0.04),
-                    _buildPositionedInput("Forearms L", "forearms_l", h * 0.45, w * 0.81),
+                    _buildPositionedInput("Forearms R", "forearms_r", h * 0.45, w * 0.04, alignLeft: true),
+                    _buildPositionedInput("Forearms L", "forearms_l", h * 0.45, w * 0.81, alignLeft: false),
                     
-                    _buildPositionedInput("Waist", "waist", h * 0.52, w * 0.43),
-                    _buildPositionedInput("Hips", "hips", h * 0.60, w * 0.43),
+                    _buildPositionedInput("Waist", "waist", h * 0.52, w * 0.43, alignLeft: true),
+                    _buildPositionedInput("Hips", "hips", h * 0.60, w * 0.43, alignLeft: true),
                     
-                    _buildPositionedInput("Thighs R", "thighs_r", h * 0.72, w * 0.30),
-                    _buildPositionedInput("Thighs L", "thighs_l", h * 0.72, w * 0.55),
+                    _buildPositionedInput("Thighs R", "thighs_r", h * 0.72, w * 0.30, alignLeft: true),
+                    _buildPositionedInput("Thighs L", "thighs_l", h * 0.72, w * 0.55, alignLeft: false),
                     
-                    _buildPositionedInput("Calves R", "calves_r", h * 0.88, w * 0.30),
-                    _buildPositionedInput("Calves L", "calves_l", h * 0.88, w * 0.55),
+                    _buildPositionedInput("Calves R", "calves_r", h * 0.88, w * 0.30, alignLeft: true),
+                    _buildPositionedInput("Calves L", "calves_l", h * 0.88, w * 0.55, alignLeft: false),
                   ],
                 ),
               );
@@ -805,12 +813,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildPositionedInput(String label, String key, double top, double left) {
+  Widget _buildPositionedInput(String label, String key, double top, double left, {bool alignLeft = true}) {
     return Positioned(
       top: top,
       left: left,
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: alignLeft ? CrossAxisAlignment.start : CrossAxisAlignment.center,
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
@@ -827,12 +836,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
               borderRadius: BorderRadius.circular(6),
               boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 4, offset: const Offset(0, 2))],
             ),
-            alignment: Alignment.center,
+            alignment: alignLeft ? Alignment.centerLeft : Alignment.center,
             child: TextField(
               controller: _getGoalController("body-$key", bodyMeasurements[key]?.toString() ?? ""),
-              textAlign: TextAlign.center,
+              textAlign: alignLeft ? TextAlign.left : TextAlign.center,
               style: GoogleFonts.workSans(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF1A1A1A)),
-              decoration: const InputDecoration(isDense: true, border: InputBorder.none, contentPadding: EdgeInsets.zero, hintText: "0", hintStyle: TextStyle(color: Colors.grey, fontSize: 10)),
+              decoration: InputDecoration(
+                isDense: true, 
+                border: InputBorder.none, 
+                contentPadding: alignLeft ? const EdgeInsets.only(left: 6) : EdgeInsets.zero, 
+                hintText: "0", 
+                hintStyle: const TextStyle(color: Colors.grey, fontSize: 10)
+              ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (val) {
                  bodyMeasurements[key] = val;
@@ -842,6 +857,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
     );
+  }
   }
 
   Widget _buildUnitToggle() {
