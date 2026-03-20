@@ -483,7 +483,7 @@ async def align_photos(data: AlignPhotosRequest):
     img1 = clean_b64(data.img1_base64)
     img2 = clean_b64(data.img2_base64)
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
     prompt = (
         "Analyze these two progress photos. Detect the precise [x, y] coordinates for: "
