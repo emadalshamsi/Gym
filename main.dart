@@ -824,12 +824,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         crossAxisAlignment: alignLeft ? CrossAxisAlignment.start : CrossAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            decoration: BoxDecoration(color: const Color(0xFF4A80F0), borderRadius: BorderRadius.circular(4)),
-            child: Text(label, style: GoogleFonts.workSans(fontSize: 7, fontWeight: FontWeight.bold, color: Colors.white)),
-          ),
-          const SizedBox(height: 2),
-          Container(
             width: 50,
             height: 22,
             decoration: BoxDecoration(
