@@ -28,4 +28,7 @@ flutter:
   assets:
     - assets/icons/
     - assets/textures/
-    - assets/figure/
+    - assets/figure/male_figure.svg
+    - assets/figure/female_figure.svg
+    - assets/figure/male_figure.jpeg
+    - assets/figure/female_figure.jpeg

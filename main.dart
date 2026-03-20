@@ -765,7 +765,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     // 2. Middle Layer: SVG Figure
                     Positioned.fill(
                       child: SvgPicture.asset(
-                        isMaleFigure ? 'assets/figure/male_figure.svg' : 'figure/female_figure.svg',
+                        isMaleFigure ? 'assets/figure/male_figure.svg' : 'assets/figure/female_figure.svg',
                         width: w,
                         fit: BoxFit.fitWidth,
                       ),
