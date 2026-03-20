@@ -97,6 +97,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String selectedPhotoSide = 'Front';
   String? leftPhotoId, rightPhotoId;
   double comparisonValue = 0.5;
+  double leftScale = 1.0, rightScale = 1.0;
+  Offset leftOffset = Offset.zero, rightOffset = Offset.zero;
+  bool isAdjustMode = false;
 
   final Map<String, TextEditingController> _goalControllers = {};
   
@@ -1775,31 +1778,48 @@ Widget _buildWaterBottle(double progress) {
   }
 
   Widget _buildComparisonControls(List<dynamic> sidePhotos) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildDropdown("Date 1", leftPhotoId, sidePhotos, (v) => setState(() => leftPhotoId = v)),
-          const SizedBox(width: 8),
-          _buildDropdown("Side", selectedPhotoSide, ["Front", "Side", "Back"], (v) {
-             setState(() {
-               selectedPhotoSide = v!;
-               // Auto-reset dates for new side
-               final filtered = progressPhotos.where((p) => p['side'].toString().toLowerCase() == v.toLowerCase()).toList();
-               if (filtered.length >= 2) {
-                 leftPhotoId = filtered[1]['id'].toString();
-                 rightPhotoId = filtered[0]['id'].toString();
-               } else {
-                 leftPhotoId = null;
-                 rightPhotoId = filtered.isNotEmpty ? filtered[0]['id'].toString() : null;
-               }
-             });
+    return Row(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildDropdown("Date 1", leftPhotoId, sidePhotos, (v) => setState(() => leftPhotoId = v)),
+                const SizedBox(width: 8),
+                _buildDropdown("Side", selectedPhotoSide, ["Front", "Side", "Back"], (v) {
+                   setState(() {
+                     selectedPhotoSide = v!;
+                     // Auto-reset dates for new side
+                     final filtered = progressPhotos.where((p) => p['side'].toString().toLowerCase() == v.toLowerCase()).toList();
+                     if (filtered.length >= 2) {
+                       leftPhotoId = filtered[1]['id'].toString();
+                       rightPhotoId = filtered[0]['id'].toString();
+                     } else {
+                       leftPhotoId = null;
+                       rightPhotoId = filtered.isNotEmpty ? filtered[0]['id'].toString() : null;
+                     }
+                   });
+                }),
+                const SizedBox(width: 8),
+                _buildDropdown("Date 2", rightPhotoId, sidePhotos, (v) => setState(() => rightPhotoId = v)),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        IconButton(
+          onPressed: () => setState(() {
+            isAdjustMode = !isAdjustMode;
+            if (!isAdjustMode) {
+              leftScale = 1.0; leftOffset = Offset.zero;
+              rightScale = 1.0; rightOffset = Offset.zero;
+            }
           }),
-          const SizedBox(width: 8),
-          _buildDropdown("Date 2", rightPhotoId, sidePhotos, (v) => setState(() => rightPhotoId = v)),
-        ],
-      ),
+          icon: Icon(isAdjustMode ? Icons.check_circle : Icons.tune, color: isAdjustMode ? Colors.green : const Color(0xFF4A80F0)),
+          tooltip: "Adjust Alignment",
+        ),
+      ],
     );
   }
 
@@ -1843,61 +1863,102 @@ Widget _buildWaterBottle(double progress) {
 
     return LayoutBuilder(builder: (context, constraints) {
         double width = constraints.maxWidth;
-        double height = width * 1.0; // Square-ish comparison
+        double height = width * 1.2; // Taller for full body
 
         return ClipRRect(
           borderRadius: BorderRadius.circular(20),
           child: SizedBox(
             height: height,
             width: width,
-            child: Stack(
-              children: [
-                // Right photo (background)
-                Positioned.fill(child: Image.network(rightPhoto['photo_url'], fit: BoxFit.cover, errorBuilder: (c, e, s) => Container(color: Colors.grey[200], child: const Icon(Icons.error)))),
-                
-                // Left photo (foreground with clipper)
-                Positioned.fill(
-                  child: AnimatedBuilder(
-                    animation: AlwaysStoppedAnimation(comparisonValue),
-                    builder: (context, _) {
-                      return ClipRect(
-                        clipper: _SliderClipper(comparisonValue),
-                        child: Image.network(leftPhoto['photo_url'], fit: BoxFit.cover, errorBuilder: (c, e, s) => Container(color: Colors.grey[100], child: const Icon(Icons.error))),
-                      );
-                    },
+            child: GestureDetector(
+              onScaleUpdate: (details) {
+                if (!isAdjustMode || details.pointerCount == 1) {
+                  setState(() {
+                    if (!isAdjustMode) {
+                      comparisonValue = (details.localFocalPoint.dx / width).clamp(0.0, 1.0);
+                    } else {
+                      bool isLeft = details.localFocalPoint.dx < (comparisonValue * width);
+                      if (isLeft) {
+                        leftOffset += details.focalPointDelta;
+                      } else {
+                        rightOffset += details.focalPointDelta;
+                      }
+                    }
+                  });
+                } else if (isAdjustMode && details.pointerCount > 1) {
+                  setState(() {
+                    bool isLeft = details.localFocalPoint.dx < (comparisonValue * width);
+                    if (isLeft) {
+                      leftScale = (leftScale * details.scale).clamp(0.5, 3.0);
+                    } else {
+                      rightScale = (rightScale * details.scale).clamp(0.5, 3.0);
+                    }
+                  });
+                }
+              },
+              child: Stack(
+                children: [
+                  // Right photo (background)
+                  Positioned.fill(
+                    child: Transform(
+                      transform: Matrix4.identity()
+                        ..translate(rightOffset.dx, rightOffset.dy)
+                        ..scale(rightScale),
+                      alignment: Alignment.center,
+                      child: Image.network(rightPhoto['photo_url'], fit: BoxFit.cover, 
+                        errorBuilder: (c, e, s) => Container(color: Colors.grey[200], child: const Icon(Icons.error))),
+                    ),
                   ),
-                ),
-                
-                // Slider Handle
-                Positioned(
-                  left: width * comparisonValue - 15,
-                  top: 0,
-                  bottom: 0,
-                  child: GestureDetector(
-                    onHorizontalDragUpdate: (details) {
-                      setState(() {
-                        comparisonValue = (comparisonValue + details.primaryDelta! / width).clamp(0.0, 1.0);
-                      });
-                    },
-                    child: Center(
-                      child: Container(
-                        width: 30,
-                        height: 30,
-                        decoration: const BoxDecoration(color: Color(0xFF4A80F0), shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)]),
-                        child: const Icon(Icons.compare_arrows, color: Colors.white, size: 20),
+                  
+                  // Left photo (foreground with clipper)
+                  Positioned.fill(
+                    child: ClipRect(
+                      clipper: _SliderClipper(comparisonValue),
+                      child: Transform(
+                        transform: Matrix4.identity()
+                          ..translate(leftOffset.dx, leftOffset.dy)
+                          ..scale(leftScale),
+                        alignment: Alignment.center,
+                        child: Image.network(leftPhoto['photo_url'], fit: BoxFit.cover, 
+                          errorBuilder: (c, e, s) => Container(color: Colors.grey[100], child: const Icon(Icons.error))),
                       ),
                     ),
                   ),
-                ),
-                
-                // Separator Line
-                Positioned(
-                  left: width * comparisonValue - 1,
-                  top: 0,
-                  bottom: 0,
-                  child: Container(width: 2, color: Colors.white.withOpacity(0.5)),
-                ),
-              ],
+                  
+                  // Separator Line
+                  Positioned(
+                    left: width * comparisonValue - 1,
+                    top: 0,
+                    bottom: 0,
+                    child: Container(width: 2, color: Colors.white),
+                  ),
+
+                  // Slider Handle
+                  Positioned(
+                    left: width * comparisonValue - 20,
+                    top: height / 2 - 20,
+                    child: Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(color: const Color(0xFF4A80F0), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2), boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)]),
+                      child: const Icon(Icons.compare_arrows, color: Colors.white, size: 20),
+                    ),
+                  ),
+
+                  if (isAdjustMode)
+                    Positioned(
+                      top: 10, left: 10, right: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(color: Colors.black.withOpacity(0.7), borderRadius: BorderRadius.circular(8)),
+                        child: Text(
+                          "ADJUST MODE ON\nDrag to Move • Pinch to Zoom\n(Left side for Date 1, Right side for Date 2)",
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.workSans(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         );
