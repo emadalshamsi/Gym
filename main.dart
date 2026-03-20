@@ -102,7 +102,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   double alignmentOpacity = 0.5;
   Offset leftOffset = Offset.zero, rightOffset = Offset.zero;
   bool isAdjustMode = false;
-  bool isAligning = false;
 
   final Map<String, TextEditingController> _goalControllers = {};
   
@@ -1811,23 +1810,27 @@ Widget _buildWaterBottle(double progress) {
           ),
         ),
         const SizedBox(width: 8),
-        if (leftPhotoId != null && rightPhotoId != null)
-          isAligning 
-          ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
-          : IconButton(
-            onPressed: _autoAlignWithAI,
-            icon: const Icon(Icons.auto_fix_high, color: Color(0xFF4A80F0)),
-            tooltip: "Smart Align (AI)",
-          ),
         IconButton(
-          onPressed: () => setState(() {
-            isAdjustMode = !isAdjustMode;
-            if (!isAdjustMode) {
-              leftScale = 1.0; leftOffset = Offset.zero; leftRotation = 0.0;
-              rightScale = 1.0; rightOffset = Offset.zero; rightRotation = 0.0;
-            }
-          }),
-          icon: Icon(isAdjustMode ? Icons.check_circle : Icons.tune, color: isAdjustMode ? Colors.green : const Color(0xFF4A80F0)),
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(fullscreenDialog: true, builder: (_) => _FullScreenAlignmentPage(
+              leftPhoto: sidePhotos.firstWhere((p) => p['id'].toString() == leftPhotoId, orElse: () => sidePhotos.first),
+              rightPhoto: sidePhotos.firstWhere((p) => p['id'].toString() == rightPhotoId, orElse: () => sidePhotos.last),
+              initialOpacity: alignmentOpacity,
+              initialRotation: rightRotation,
+              initialScale: rightScale,
+              initialOffset: rightOffset,
+              onConfirm: (opacity, rotation, scale, offset) {
+                setState(() {
+                  alignmentOpacity = opacity;
+                  rightRotation = rotation;
+                  rightScale = scale;
+                  rightOffset = offset;
+                });
+              },
+            )),
+          ),
+          icon: const Icon(Icons.tune, color: Color(0xFF4A80F0)),
           tooltip: "Adjust Alignment",
         ),
       ],
@@ -1883,169 +1886,50 @@ Widget _buildWaterBottle(double progress) {
             width: width,
             child: GestureDetector(
               onScaleUpdate: (details) {
-                if (!isAdjustMode || details.pointerCount == 1) {
-                  setState(() {
-                    if (!isAdjustMode) {
-                      comparisonValue = (details.localFocalPoint.dx / width).clamp(0.0, 1.0);
-                    } else {
-                      bool isLeft = details.localFocalPoint.dx < (comparisonValue * width);
-                      if (isLeft) {
-                        leftOffset += details.focalPointDelta;
-                      } else {
-                        rightOffset += details.focalPointDelta;
-                      }
-                    }
-                  });
-                } else if (isAdjustMode && details.pointerCount > 1) {
-                  setState(() {
-                    bool isLeft = details.localFocalPoint.dx < (comparisonValue * width);
-                    if (isLeft) {
-                      leftScale = (leftScale * details.scale).clamp(0.5, 3.0);
-                    } else {
-                      rightScale = (rightScale * details.scale).clamp(0.5, 3.0);
-                    }
-                  });
+                if (details.pointerCount == 1) {
+                  setState(() => comparisonValue = (details.localFocalPoint.dx / width).clamp(0.0, 1.0));
                 }
               },
               child: Stack(
                 children: [
-                  // Mode: Transparent Overlay (Adjustment)
-                  if (isAdjustMode) ...[
-                    // Base Photo (Left)
-                    Positioned.fill(
-                      child: Transform(
-                        transform: Matrix4.identity()
-                          ..translate(leftOffset.dx, leftOffset.dy)
-                          ..rotateZ(leftRotation)
-                          ..scale(leftScale),
-                        alignment: Alignment.center,
-                        child: Image.network(leftPhoto['photo_url'], fit: BoxFit.cover, 
-                          errorBuilder: (c, e, s) => Container(color: Colors.grey[100], child: const Icon(Icons.error))),
-                      ),
+                  // Right photo (background) — receives alignment transforms
+                  Positioned.fill(
+                    child: Transform(
+                      transform: Matrix4.identity()
+                        ..translate(rightOffset.dx, rightOffset.dy)
+                        ..rotateZ(rightRotation)
+                        ..scale(rightScale),
+                      alignment: Alignment.center,
+                      child: Image.network(rightPhoto['photo_url'], fit: BoxFit.cover,
+                        errorBuilder: (c, e, s) => Container(color: Colors.grey[200])),
                     ),
-                    // Ghost Photo (Right)
-                    Positioned.fill(
-                      child: Opacity(
-                        opacity: alignmentOpacity,
-                        child: Transform(
-                          transform: Matrix4.identity()
-                            ..translate(rightOffset.dx, rightOffset.dy)
-                            ..rotateZ(rightRotation)
-                            ..scale(rightScale),
-                          alignment: Alignment.center,
-                          child: Image.network(rightPhoto['photo_url'], fit: BoxFit.cover, 
-                            errorBuilder: (c, e, s) => Container(color: Colors.grey[200], child: const Icon(Icons.error))),
-                        ),
-                      ),
+                  ),
+                  // Left photo (clipped foreground)
+                  Positioned.fill(
+                    child: ClipRect(
+                      clipper: _SliderClipper(comparisonValue),
+                      child: Image.network(leftPhoto['photo_url'], fit: BoxFit.cover,
+                        errorBuilder: (c, e, s) => Container(color: Colors.grey[100])),
                     ),
-                  ] 
-                  // Mode: Split Slider (Comparison)
-                  else ...[
-                    // Right photo (background)
-                    Positioned.fill(
-                      child: Transform(
-                        transform: Matrix4.identity()
-                          ..translate(rightOffset.dx, rightOffset.dy)
-                          ..rotateZ(rightRotation)
-                          ..scale(rightScale),
-                        alignment: Alignment.center,
-                        child: Image.network(rightPhoto['photo_url'], fit: BoxFit.cover, 
-                          errorBuilder: (c, e, s) => Container(color: Colors.grey[200], child: const Icon(Icons.error))),
-                      ),
+                  ),
+                  // Separator line
+                  Positioned(
+                    left: width * comparisonValue - 1,
+                    top: 0, bottom: 0,
+                    child: Container(width: 2, color: Colors.white),
+                  ),
+                  // Drag handle
+                  Positioned(
+                    left: width * comparisonValue - 20,
+                    top: height / 2 - 20,
+                    child: Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(color: const Color(0xFF4A80F0), shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)]),
+                      child: const Icon(Icons.compare_arrows, color: Colors.white, size: 20),
                     ),
-                    
-                    // Left photo (foreground with clipper)
-                    Positioned.fill(
-                      child: ClipRect(
-                        clipper: _SliderClipper(comparisonValue),
-                        child: Transform(
-                          transform: Matrix4.identity()
-                            ..translate(leftOffset.dx, leftOffset.dy)
-                            ..rotateZ(leftRotation)
-                            ..scale(leftScale),
-                          alignment: Alignment.center,
-                          child: Image.network(leftPhoto['photo_url'], fit: BoxFit.cover, 
-                            errorBuilder: (c, e, s) => Container(color: Colors.grey[100], child: const Icon(Icons.error))),
-                        ),
-                      ),
-                    ),
-                    
-                    // Separator Line
-                    Positioned(
-                      left: width * comparisonValue - 1,
-                      top: 0, bottom: 0,
-                      child: Container(width: 2, color: Colors.white),
-                    ),
-
-                    // Slider Handle
-                    Positioned(
-                      left: width * comparisonValue - 20,
-                      top: height / 2 - 20,
-                      child: Container(
-                        width: 40, height: 40,
-                        decoration: BoxDecoration(color: const Color(0xFF4A80F0), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2), boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)]),
-                        child: const Icon(Icons.compare_arrows, color: Colors.white, size: 20),
-                      ),
-                    ),
-                  ],
-
-                  if (isAdjustMode)
-                    Positioned(
-                      top: 10, left: 10, right: 10,
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(color: Colors.black.withOpacity(0.7), borderRadius: BorderRadius.circular(8)),
-                            child: Text(
-                              "OVERLAY ADJUST MODE\nDrag/Pinch the top image to match the bottom one",
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.workSans(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          // Transparency Slider
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), borderRadius: BorderRadius.circular(20)),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.opacity, color: Colors.white, size: 16),
-                                Expanded(
-                                  child: Slider(
-                                    value: alignmentOpacity,
-                                    min: 0.1, max: 0.9,
-                                    activeColor: Colors.white,
-                                    inactiveColor: Colors.white24,
-                                    onChanged: (v) => setState(() => alignmentOpacity = v),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          // Rotation Slider
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), borderRadius: BorderRadius.circular(20)),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.rotate_right, color: Colors.white, size: 16),
-                                Expanded(
-                                  child: Slider(
-                                    value: rightRotation.clamp(-0.5, 0.5),
-                                    min: -0.5, max: 0.5,
-                                    activeColor: const Color(0xFF4A80F0),
-                                    inactiveColor: Colors.white24,
-                                    onChanged: (v) => setState(() => rightRotation = v),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  ),
                 ],
               ),
             ),
@@ -2631,55 +2515,6 @@ Widget _buildWaterBottle(double progress) {
     return spots;
   } // End of _getForecastSpots
 
-  Future<void> _autoAlignWithAI() async {
-    if (leftPhotoId == null || rightPhotoId == null) return;
-    
-    final sidePhotos = progressPhotos.where((p) => p['side'].toString().toLowerCase() == selectedPhotoSide.toLowerCase()).toList();
-    final leftP = sidePhotos.firstWhere((p) => p['id'].toString() == leftPhotoId, orElse: () => null);
-    final rightP = sidePhotos.firstWhere((p) => p['id'].toString() == rightPhotoId, orElse: () => null);
-    
-    if (leftP == null || rightP == null) return;
-
-    setState(() => isAligning = true);
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/align_photos'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'img1_base64': leftP['photo_url'],
-          'img2_base64': rightP['photo_url'],
-          'side': selectedPhotoSide.toLowerCase(),
-        }),
-      ).timeout(const Duration(seconds: 60));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['status'] == 'success') {
-          setState(() {
-            // We align the right photo to match the left one
-            rightScale = (data['alignment']['scale'] as num).toDouble();
-            rightRotation = (data['alignment']['rotation'] as num).toDouble();
-            // dx/dy logic (normalized to pixel area)
-            rightOffset = Offset(
-              (data['alignment']['dx'] as num).toDouble() * 300, 
-              (data['alignment']['dy'] as num).toDouble() * 360
-            );
-            isAdjustMode = true; 
-          });
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("AI Alignment Complete!")));
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("AI Error: ${data['error']}")));
-        }
-      } else {
-         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Server Error: ${response.statusCode}")));
-      }
-    } catch (e) {
-      debugPrint("AutoAlign Error: $e");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Connection failed: $e")));
-    } finally {
-      if (mounted) setState(() => isAligning = false);
-    }
-  }
 } // End of _DashboardScreenState
 
 class DashedDivider extends StatelessWidget {
@@ -2742,6 +2577,164 @@ class DashboardDashedLinePainter extends CustomPainter {
 }
 
 int val(int i) => (i * 137 + 42);
+
+class _FullScreenAlignmentPage extends StatefulWidget {
+  final Map<String, dynamic> leftPhoto;
+  final Map<String, dynamic> rightPhoto;
+  final double initialOpacity;
+  final double initialRotation;
+  final double initialScale;
+  final Offset initialOffset;
+  final Function(double opacity, double rotation, double scale, Offset offset) onConfirm;
+
+  const _FullScreenAlignmentPage({
+    required this.leftPhoto, required this.rightPhoto,
+    required this.initialOpacity, required this.initialRotation,
+    required this.initialScale, required this.initialOffset,
+    required this.onConfirm,
+  });
+
+  @override
+  State<_FullScreenAlignmentPage> createState() => _FullScreenAlignmentPageState();
+}
+
+class _FullScreenAlignmentPageState extends State<_FullScreenAlignmentPage> {
+  late double opacity;
+  late double rotation;
+  late double scale;
+  late Offset offset;
+
+  @override
+  void initState() {
+    super.initState();
+    opacity = widget.initialOpacity;
+    rotation = widget.initialRotation;
+    scale = widget.initialScale;
+    offset = widget.initialOffset;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          // BASE PHOTO (Date 1) — fixed, full screen
+          Positioned.fill(
+            child: Image.network(widget.leftPhoto['photo_url'], fit: BoxFit.contain,
+              errorBuilder: (c, e, s) => const Center(child: Icon(Icons.error, color: Colors.white))),
+          ),
+          // GHOST PHOTO (Date 2) — draggable + transformable
+          Positioned.fill(
+            child: GestureDetector(
+              onPanUpdate: (d) => setState(() => offset += d.delta),
+              child: Opacity(
+                opacity: opacity,
+                child: Transform(
+                  transform: Matrix4.identity()
+                    ..translate(offset.dx, offset.dy)
+                    ..rotateZ(rotation)
+                    ..scale(scale),
+                  alignment: Alignment.center,
+                  child: Image.network(widget.rightPhoto['photo_url'], fit: BoxFit.contain,
+                    errorBuilder: (c, e, s) => const SizedBox.shrink()),
+                ),
+              ),
+            ),
+          ),
+          // TOP STATUS BAR
+          Positioned(
+            top: 0, left: 0, right: 0,
+            child: Container(
+              padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 8, left: 16, right: 16, bottom: 12),
+              decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.black87, Colors.transparent])),
+              child: Row(
+                children: [
+                  IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(context)),
+                  const Spacer(),
+                  Column(
+                    children: [
+                      Text("OVERLAY ALIGNMENT", style: GoogleFonts.workSans(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                      Text("Drag ghost image • Use sliders below", style: GoogleFonts.workSans(color: Colors.white60, fontSize: 11)),
+                    ],
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.refresh, color: Colors.white60),
+                    onPressed: () => setState(() { offset = Offset.zero; rotation = 0; scale = 1.0; opacity = 0.5; }),
+                    tooltip: "Reset",
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // BOTTOM CONTROL PANEL
+          Positioned(
+            bottom: 0, left: 0, right: 0,
+            child: Container(
+              padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).padding.bottom + 20),
+              decoration: const BoxDecoration(
+                color: Color(0xEE111827),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Handle bar
+                  Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+                  _controlRow(Icons.opacity, "Opacity", opacity, 0.1, 0.9, Colors.white, (v) => setState(() => opacity = v)),
+                  const SizedBox(height: 10),
+                  _controlRow(Icons.rotate_right, "Rotate", rotation, -0.5, 0.5, const Color(0xFF4A80F0), (v) => setState(() => rotation = v)),
+                  const SizedBox(height: 10),
+                  _controlRow(Icons.zoom_in, "Scale", scale, 0.5, 2.5, Colors.greenAccent, (v) => setState(() => scale = v)),
+                  const SizedBox(height: 22),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        widget.onConfirm(opacity, rotation, scale, offset);
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 0,
+                      ),
+                      icon: const Icon(Icons.check_circle_outline),
+                      label: Text("Confirm Alignment", style: GoogleFonts.workSans(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _controlRow(IconData icon, String label, double value, double min, double max, Color color, ValueChanged<double> onChanged) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: 6),
+        SizedBox(width: 54, child: Text(label, style: GoogleFonts.workSans(color: Colors.white70, fontSize: 12))),
+        Expanded(
+          child: Slider(
+            value: value.clamp(min, max),
+            min: min, max: max,
+            activeColor: color,
+            inactiveColor: Colors.white12,
+            onChanged: onChanged,
+          ),
+        ),
+        SizedBox(width: 40, child: Text(value.toStringAsFixed(2), style: GoogleFonts.workSans(color: Colors.white38, fontSize: 11), textAlign: TextAlign.right)),
+      ],
+    );
+  }
+}
 
 class _SliderClipper extends CustomClipper<Rect> {
   final double value;
