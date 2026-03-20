@@ -99,6 +99,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   double comparisonValue = 0.5;
   double leftScale = 1.0, rightScale = 1.0;
   double leftRotation = 0.0, rightRotation = 0.0;
+  double alignmentOpacity = 0.5;
   Offset leftOffset = Offset.zero, rightOffset = Offset.zero;
   bool isAdjustMode = false;
   bool isAligning = false;
@@ -1908,22 +1909,10 @@ Widget _buildWaterBottle(double progress) {
               },
               child: Stack(
                 children: [
-                  Positioned.fill(
-                    child: Transform(
-                      transform: Matrix4.identity()
-                        ..translate(rightOffset.dx, rightOffset.dy)
-                        ..rotateZ(rightRotation)
-                        ..scale(rightScale),
-                      alignment: Alignment.center,
-                      child: Image.network(rightPhoto['photo_url'], fit: BoxFit.cover, 
-                        errorBuilder: (c, e, s) => Container(color: Colors.grey[200], child: const Icon(Icons.error))),
-                    ),
-                  ),
-                  
-                  // Left photo (foreground with clipper)
-                  Positioned.fill(
-                    child: ClipRect(
-                      clipper: _SliderClipper(comparisonValue),
+                  // Mode: Transparent Overlay (Adjustment)
+                  if (isAdjustMode) ...[
+                    // Base Photo (Left)
+                    Positioned.fill(
                       child: Transform(
                         transform: Matrix4.identity()
                           ..translate(leftOffset.dx, leftOffset.dy)
@@ -1934,38 +1923,127 @@ Widget _buildWaterBottle(double progress) {
                           errorBuilder: (c, e, s) => Container(color: Colors.grey[100], child: const Icon(Icons.error))),
                       ),
                     ),
-                  ),
-                  
-                  // Separator Line
-                  Positioned(
-                    left: width * comparisonValue - 1,
-                    top: 0,
-                    bottom: 0,
-                    child: Container(width: 2, color: Colors.white),
-                  ),
-
-                  // Slider Handle
-                  Positioned(
-                    left: width * comparisonValue - 20,
-                    top: height / 2 - 20,
-                    child: Container(
-                      width: 40, height: 40,
-                      decoration: BoxDecoration(color: const Color(0xFF4A80F0), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2), boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)]),
-                      child: const Icon(Icons.compare_arrows, color: Colors.white, size: 20),
+                    // Ghost Photo (Right)
+                    Positioned.fill(
+                      child: Opacity(
+                        opacity: alignmentOpacity,
+                        child: Transform(
+                          transform: Matrix4.identity()
+                            ..translate(rightOffset.dx, rightOffset.dy)
+                            ..rotateZ(rightRotation)
+                            ..scale(rightScale),
+                          alignment: Alignment.center,
+                          child: Image.network(rightPhoto['photo_url'], fit: BoxFit.cover, 
+                            errorBuilder: (c, e, s) => Container(color: Colors.grey[200], child: const Icon(Icons.error))),
+                        ),
+                      ),
                     ),
-                  ),
+                  ] 
+                  // Mode: Split Slider (Comparison)
+                  else ...[
+                    // Right photo (background)
+                    Positioned.fill(
+                      child: Transform(
+                        transform: Matrix4.identity()
+                          ..translate(rightOffset.dx, rightOffset.dy)
+                          ..rotateZ(rightRotation)
+                          ..scale(rightScale),
+                        alignment: Alignment.center,
+                        child: Image.network(rightPhoto['photo_url'], fit: BoxFit.cover, 
+                          errorBuilder: (c, e, s) => Container(color: Colors.grey[200], child: const Icon(Icons.error))),
+                      ),
+                    ),
+                    
+                    // Left photo (foreground with clipper)
+                    Positioned.fill(
+                      child: ClipRect(
+                        clipper: _SliderClipper(comparisonValue),
+                        child: Transform(
+                          transform: Matrix4.identity()
+                            ..translate(leftOffset.dx, leftOffset.dy)
+                            ..rotateZ(leftRotation)
+                            ..scale(leftScale),
+                          alignment: Alignment.center,
+                          child: Image.network(leftPhoto['photo_url'], fit: BoxFit.cover, 
+                            errorBuilder: (c, e, s) => Container(color: Colors.grey[100], child: const Icon(Icons.error))),
+                        ),
+                      ),
+                    ),
+                    
+                    // Separator Line
+                    Positioned(
+                      left: width * comparisonValue - 1,
+                      top: 0, bottom: 0,
+                      child: Container(width: 2, color: Colors.white),
+                    ),
+
+                    // Slider Handle
+                    Positioned(
+                      left: width * comparisonValue - 20,
+                      top: height / 2 - 20,
+                      child: Container(
+                        width: 40, height: 40,
+                        decoration: BoxDecoration(color: const Color(0xFF4A80F0), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2), boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)]),
+                        child: const Icon(Icons.compare_arrows, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ],
 
                   if (isAdjustMode)
                     Positioned(
                       top: 10, left: 10, right: 10,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(color: Colors.black.withOpacity(0.7), borderRadius: BorderRadius.circular(8)),
-                        child: Text(
-                          "ADJUST MODE ON\nDrag to Move • Pinch to Zoom\n(Left side for Date 1, Right side for Date 2)",
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.workSans(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
-                        ),
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(color: Colors.black.withOpacity(0.7), borderRadius: BorderRadius.circular(8)),
+                            child: Text(
+                              "OVERLAY ADJUST MODE\nDrag/Pinch the top image to match the bottom one",
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.workSans(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          // Transparency Slider
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), borderRadius: BorderRadius.circular(20)),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.opacity, color: Colors.white, size: 16),
+                                Expanded(
+                                  child: Slider(
+                                    value: alignmentOpacity,
+                                    min: 0.1, max: 0.9,
+                                    activeColor: Colors.white,
+                                    inactiveColor: Colors.white24,
+                                    onChanged: (v) => setState(() => alignmentOpacity = v),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          // Rotation Slider
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), borderRadius: BorderRadius.circular(20)),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.rotate_right, color: Colors.white, size: 16),
+                                Expanded(
+                                  child: Slider(
+                                    value: rightRotation.clamp(-0.5, 0.5),
+                                    min: -0.5, max: 0.5,
+                                    activeColor: const Color(0xFF4A80F0),
+                                    inactiveColor: Colors.white24,
+                                    onChanged: (v) => setState(() => rightRotation = v),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                 ],
