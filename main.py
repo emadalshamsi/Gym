@@ -306,9 +306,12 @@ async def get_daily_intake(user_id: str = Query(...), date: str = Query(None)):
         
         # جلب أحدث مقاسات الجسم
         body_measurements = {}
-        meas_res = supabase.table("body_measurements").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(1).execute()
-        if meas_res.data:
-            body_measurements = meas_res.data[0]
+        try:
+            meas_res = supabase.table("body_measurements").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(1).execute()
+            if meas_res.data:
+                body_measurements = meas_res.data[0]
+        except Exception as e:
+            logger.warning(f"Body Measurements error (possibly table missing): {e}")
         
         # جلب الوجبات
         meals = supabase.table("meals").select("id").eq("user_id", user_id).gte("created_at", target_date).lt("created_at", next_day).execute()
