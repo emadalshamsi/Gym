@@ -67,6 +67,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _statsView = "Week"; // To toggle between Week/Month
   List<dynamic> calStatsData = []; // Real calorie data for chart
   List<dynamic> waterStatsData = []; // Real water data for chart
+  List<dynamic> sleepStatsData = []; // Real sleep data for chart
+  List<dynamic> stepsStatsData = []; // Real steps data for chart
+  
+  // Body Measurements State
+  Map<String, dynamic> bodyMeasurements = {};
+  bool isMaleFigure = true;
+  String measurementUnit = 'cm';
   
   // Goals State (Plan Page)
   bool isEditingGoals = false;
@@ -164,6 +171,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
              });
           }
 
+          // Sync Body Measurements
+          if (data['body_measurements'] != null) {
+            bodyMeasurements = Map<String, dynamic>.from(data['body_measurements']);
+            isMaleFigure = (bodyMeasurements['gender'] ?? 'male') == 'male';
+            measurementUnit = bodyMeasurements['unit'] ?? 'cm';
+            // Update controllers if they exist
+            bodyMeasurements.forEach((key, value) {
+               final cKey = "body-$key";
+               if (_goalControllers.containsKey(cKey)) {
+                 _goalControllers[cKey]!.text = value?.toString() ?? "";
+               }
+            });
+          }
+
           // FIXED: Added null checks before using > operator
           double calP = (targets['cal'] ?? 0.0) > 0 ? ((totals['cal'] ?? 0.0) / (targets['cal'] ?? 1.0)) : 0.0;
           double waterP = (targets['water'] ?? 0.0) > 0 ? ((totals['water'] ?? 0.0) / (targets['water'] ?? 1.0)) : 0.0;
@@ -193,6 +214,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         setState(() {
           calStatsData = data['calories'] ?? [];
           waterStatsData = data['water'] ?? [];
+          sleepStatsData = data['sleep'] ?? [];
+          stepsStatsData = data['steps'] ?? [];
         });
       } else {
         debugPrint("Stats Server Error ${response.statusCode}: ${response.reasonPhrase}");
@@ -440,7 +463,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ],
               ),
-            ),
+            const SizedBox(height: 20),
+            _buildBodyTrackingSection(),
+            const SizedBox(height: 100),
           ],
         ),
       ),
@@ -475,6 +500,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _buildGoalInput(title, "min", data['min']?.toString() ?? ""),
                 const SizedBox(width: 10),
                 _buildGoalInput(title, "max", data['max']?.toString() ?? ""),
+              ],
+              if (title == "Measurement" && bodyMeasurements['created_at'] != null) ...[
+                Text(
+                  _formatDate(bodyMeasurements['created_at']),
+                  style: GoogleFonts.workSans(fontSize: 12, color: const Color(0xFF4A80F0), fontWeight: FontWeight.bold),
+                ),
               ],
             ],
           ),
@@ -613,21 +644,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
       int carbTarget = _calculateTarget(goals['Carbs'], targets['carb'] ?? 250.0);
       int fatTarget = _calculateTarget(goals['Fat'], targets['fat'] ?? 70.0);
 
+      final payload = {
+        "user_id": userId,
+        "habit_goals": goals,
+        "calorie_target": calTarget,
+        "water_target": waterTarget,
+        "protein_target": proteinTarget,
+        "carb_target": carbTarget,
+        "fat_target": fatTarget,
+      };
+
       final response = await http.post(
         Uri.parse("$baseUrl/update_goals"),
         headers: {"Content-Type": "application/json; charset=utf-8"},
-        body: json.encode({
-          "user_id": userId,
-          "habit_goals": goals,
-          "calorie_target": calTarget,
-          "water_target": waterTarget,
-          "protein_target": proteinTarget,
-          "carb_target": carbTarget,
-          "fat_target": fatTarget,
-        }),
+        body: json.encode(payload),
       );
       
       if (response.statusCode == 200) {
+        await _saveMeasurements(silent: true);
         _showSuccess("Goals saved successfully");
         setState(() => isEditingGoals = false);
         await _fetchData(selectedDate);
@@ -647,17 +681,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
     double max = double.tryParse(data['max']?.toString() ?? "") ?? 0;
     double val = double.tryParse(data['value']?.toString() ?? "") ?? 0;
 
-    // If 'value' is provided (Macros), use it directly
     if (val > 0) return val.toInt();
-
-    // If no values provided, return default
     if (min == 0 && max == 0) return fallback.toInt();
-    // If only one value provided, use it as is
     if (min == 0) return max.toInt();
     if (max == 0) return min.toInt();
-    // Use average and round up to next 10 (e.g. 2131.5 -> 2140)
     double avg = (min + max) / 2;
     return (avg / 10).ceil() * 10;
+  }
+
+  String _formatDate(String? isoDate) {
+    if (isoDate == null || isoDate.isEmpty) return "";
+    try {
+      final dt = DateTime.parse(isoDate);
+      return DateFormat('MMM d, yyyy').format(dt);
+    } catch (_) {
+      return "";
+    }
   }
 
   Widget _buildDashboard() {
@@ -675,13 +714,220 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _buildCaloriesCard(),
             const SizedBox(height: 20),
             _buildStatusRectangles(),
-            const SizedBox(height: 20),
             _buildGroupedDiary(),
             const SizedBox(height: 120),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildBodyTrackingSection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 15, offset: const Offset(0, 8))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("Body Measurement Tracking", style: GoogleFonts.workSans(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1A1A1A))),
+              _buildUnitToggle(),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildGenderToggle(),
+          const SizedBox(height: 20),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Left Column: Neck -> Calves R
+              Expanded(
+                flex: 2,
+                child: Column(
+                  children: [
+                    _buildMeasureField("Neck", "neck"),
+                    _buildMeasureField("Shoulder", "shoulder"),
+                    _buildMeasureField("Chest", "chest"),
+                    _buildMeasureField("Biceps R", "biceps_r"),
+                    _buildMeasureField("Forearms R", "forearms_r"),
+                    _buildMeasureField("Waist", "waist"),
+                    _buildMeasureField("Hips", "hips"),
+                    _buildMeasureField("Thighs R", "thighs_r"),
+                    _buildMeasureField("Calves R", "calves_r"),
+                  ],
+                ),
+              ),
+              // Figure
+              Expanded(
+                flex: 3,
+                child: Column(
+                  children: [
+                    const SizedBox(height: 20),
+                    String svgPath = isMaleFigure ? 'assets/figure/male_figure.svg' : 'assets/figure/female_figure.svg';
+                    SvgPicture.asset(
+                      svgPath,
+                      height: 380,
+                      fit: BoxFit.contain,
+                    ),
+                  ],
+                ),
+              ),
+              // Right Column: Biceps L -> Calves L
+              Expanded(
+                flex: 2,
+                child: Column(
+                  children: [
+                    const SizedBox(height: 100), // Push down to align with Biceps
+                    _buildMeasureField("Biceps L", "biceps_l"),
+                    _buildMeasureField("Forearms L", "forearms_l"),
+                    const SizedBox(height: 80), // Push down to align with Thighs
+                    _buildMeasureField("Thighs L", "thighs_l"),
+                    _buildMeasureField("Calves L", "calves_l"),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _saveMeasurements,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4A80F0),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                elevation: 0,
+              ),
+              child: Text("Save Measurements", style: GoogleFonts.workSans(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUnitToggle() {
+    return Container(
+      decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(10)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: ["cm", "inch"].map((u) {
+          bool isSel = measurementUnit == u;
+          return GestureDetector(
+            onTap: () => setState(() => measurementUnit = u),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(color: isSel ? const Color(0xFF4A80F0) : Colors.transparent, borderRadius: BorderRadius.circular(10)),
+              child: Text(u, style: GoogleFonts.workSans(fontSize: 10, color: isSel ? Colors.white : Colors.grey[600], fontWeight: FontWeight.bold)),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildGenderToggle() {
+    return Row(
+      children: [
+        _buildGenderButton("Male", true, Icons.male),
+        const SizedBox(width: 10),
+        _buildGenderButton("Female", false, Icons.female),
+      ],
+    );
+  }
+
+  Widget _buildGenderButton(String label, bool isMale, IconData icon) {
+    bool isSel = isMaleFigure == isMale;
+    return GestureDetector(
+      onTap: () => setState(() => isMaleFigure = isMale),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSel ? const Color(0xFF4A80F0).withOpacity(0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isSel ? const Color(0xFF4A80F0) : Colors.grey[300]!),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: isSel ? const Color(0xFF4A80F0) : Colors.grey[600]),
+            const SizedBox(width: 6),
+            Text(label, style: GoogleFonts.workSans(fontSize: 12, color: isSel ? const Color(0xFF4A80F0) : Colors.grey[600], fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMeasureField(String label, String key) {
+    final cKey = "body-$key";
+    if (!_goalControllers.containsKey(cKey)) {
+      _goalControllers[cKey] = TextEditingController(text: bodyMeasurements[key]?.toString() ?? "");
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: GoogleFonts.workSans(fontSize: 10, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+          const SizedBox(height: 4),
+          Container(
+            height: 35,
+            decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey[200]!)),
+            child: TextField(
+              controller: _goalControllers[cKey],
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              style: GoogleFonts.workSans(fontSize: 12, fontWeight: FontWeight.bold),
+              decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10), border: InputBorder.none),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _saveMeasurements({bool silent = false}) async {
+    final payload = {
+      "user_id": userId,
+      "gender": isMaleFigure ? "male" : "female",
+      "unit": measurementUnit,
+    };
+    
+    // Add all measurement fields
+    const fields = [
+      "neck", "shoulder", "chest", "biceps_r", "biceps_l", 
+      "forearms_r", "forearms_l", "waist", "hips", "thighs_r", 
+      "thighs_l", "calves_r", "calves_l"
+    ];
+    
+    for (var f in fields) {
+      final val = double.tryParse(_goalControllers["body-$f"]?.text ?? "");
+      if (val != null) payload[f] = val;
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/update_measurements"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(payload),
+      );
+      if (response.statusCode == 200) {
+        if (!silent) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Measurements saved successfully!")));
+          _fetchData(); // Refresh
+        }
+      } else {
+        if (!silent) throw Exception("Failed to save measurements");
+      }
+    } catch (e) {
+      if (!silent) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+    }
   }
 
   Widget _buildHeader() {
@@ -1200,13 +1446,21 @@ Widget _buildWaterBottle(double progress) {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         if (isMenuOpen) ...[
-          _buildFabMenuItem(Icons.directions_walk, "Walk Steps", Colors.orange, _showStepsDialog),
+          _buildFabMenuItem(Icons.bedtime, "Sleep", Colors.indigo, _showSleepDialog),
+          const SizedBox(height: 12),
+          _buildFabMenuItem(Icons.restaurant, "Meal (AI)", Colors.purple, _showMealDialog),
           const SizedBox(height: 12),
           _buildFabMenuItem(Icons.water_drop, "Water Intake", Colors.blue, _showWaterDialog),
           const SizedBox(height: 12),
-          _buildFabMenuItem(Icons.restaurant, "Meal (Calory)", Colors.purple, _showMealDialog), // Using showMealDialog for now
+          _buildFabMenuItem(Icons.directions_walk, "Steps", Colors.orange, _showStepsDialog),
           const SizedBox(height: 12),
-          _buildFabMenuItem(Icons.bedtime, "Sleep", Colors.indigo, _showSleepDialog),
+          _buildFabMenuItem(Icons.straighten, "Measurement", Colors.teal, () {
+            setState(() {
+              _currentIndex = 1; // Plan Page
+              isEditingGoals = true;
+              isMenuOpen = false;
+            });
+          }),
           const SizedBox(height: 20),
         ],
         FloatingActionButton(
@@ -1644,11 +1898,21 @@ Widget _buildWaterBottle(double progress) {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 20),
-            Text("Statistics", style: GoogleFonts.workSans(fontSize: 22, fontWeight: FontWeight.w700, color: const Color(0xFF1A1A1A))),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Statistics", style: GoogleFonts.workSans(fontSize: 22, fontWeight: FontWeight.w700, color: const Color(0xFF1A1A1A))),
+                _buildStatsToggle(),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _buildChartCard("Sleep", sleepStatsData, double.tryParse(goals['Sleep']?['min']?.toString() ?? "") ?? 8.0, Colors.indigo),
             const SizedBox(height: 20),
             _buildChartCard("Calorie Intake", calStatsData, targets['cal'] ?? 2000, const Color(0xFF4A80F0)),
             const SizedBox(height: 20),
             _buildChartCard("Water Intake", waterStatsData, (targets['water'] ?? 2000).toDouble(), const Color(0xFF4AC2A4)),
+            const SizedBox(height: 20),
+            _buildChartCard("Walk Steps", stepsStatsData, double.tryParse(goals['Walk Steps']?['min']?.toString() ?? "") ?? 10000.0, Colors.orange),
             const SizedBox(height: 100), // Extra space for FAB
           ],
         ),
@@ -1669,6 +1933,8 @@ Widget _buildWaterBottle(double progress) {
                 _statsView = view;
                 calStatsData = [];
                 waterStatsData = [];
+                sleepStatsData = [];
+                stepsStatsData = [];
               });
               _fetchStats();
             },
@@ -1689,7 +1955,7 @@ Widget _buildWaterBottle(double progress) {
   Widget _buildChartCard(String title, List<dynamic> data, double target, Color themeColor) {
     return Container(
       padding: const EdgeInsets.all(16),
-      height: 190,
+      height: 160,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -1702,18 +1968,9 @@ Widget _buildWaterBottle(double progress) {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(title, style: GoogleFonts.workSans(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF1A1A1A))),
-              _buildStatsToggle(),
             ],
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              _buildChartLegend("Achieved", themeColor),
-              const SizedBox(width: 15),
-              _buildChartLegend("Target", Colors.grey[300]!),
-            ],
-          ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10), // تعديل الهامش الجانبي للشارت هنا

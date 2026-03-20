@@ -109,6 +109,24 @@ class GoalsUpdateRequest(BaseModel):
     carb_target: Optional[int] = None
     fat_target: Optional[int] = None
 
+class BodyMeasurementsRequest(BaseModel):
+    user_id: str
+    gender: str = "male"
+    unit: str = "cm"
+    neck: Optional[float] = None
+    shoulder: Optional[float] = None
+    chest: Optional[float] = None
+    biceps_r: Optional[float] = None
+    biceps_l: Optional[float] = None
+    forearms_r: Optional[float] = None
+    forearms_l: Optional[float] = None
+    waist: Optional[float] = None
+    hips: Optional[float] = None
+    thighs_r: Optional[float] = None
+    thighs_l: Optional[float] = None
+    calves_r: Optional[float] = None
+    calves_l: Optional[float] = None
+
 # --- 1. تسجيل الوجبات (Log Meal) ---
 @app.post("/log_meal")
 async def log_meal(data: MealLogRequest):
@@ -248,6 +266,21 @@ async def update_goals(data: GoalsUpdateRequest):
         logger.error(f"Update Goals Error: {e}")
         return {"status": "error", "message": str(e)}
 
+# --- 2c. تحديث مقاسات الجسم (Update Body Measurements) ---
+@app.post("/update_measurements")
+async def update_measurements(data: BodyMeasurementsRequest):
+    try:
+        payload = data.dict(exclude={"user_id"})
+        # إدراج سجل جديد لتتبع التاريخ
+        supabase.table("body_measurements").insert({
+            "user_id": data.user_id,
+            **payload
+        }).execute()
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Update Measurements Error: {e}")
+        return {"status": "error", "message": str(e)}
+
 # --- 3. جلب البيانات اليومية (Daily Intake) ---
 @app.get("/get_daily_intake")
 async def get_daily_intake(user_id: str = Query(...), date: str = Query(None)):
@@ -270,6 +303,12 @@ async def get_daily_intake(user_id: str = Query(...), date: str = Query(None)):
             "water": profile.get("daily_water_target_ml", 2000),
             "habit_goals": profile.get("habit_goals", {})
         }
+        
+        # جلب أحدث مقاسات الجسم
+        body_measurements = {}
+        meas_res = supabase.table("body_measurements").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(1).execute()
+        if meas_res.data:
+            body_measurements = meas_res.data[0]
         
         # جلب الوجبات
         meals = supabase.table("meals").select("id").eq("user_id", user_id).gte("created_at", target_date).lt("created_at", next_day).execute()
@@ -318,7 +357,7 @@ async def get_daily_intake(user_id: str = Query(...), date: str = Query(None)):
             for i in items_data if (i.get("calories") or 0) > 0
         ]
 
-        return {"totals": totals, "targets": targets, "profile": profile, "items": items_list}
+        return {"totals": totals, "targets": targets, "profile": profile, "items": items_list, "body_measurements": body_measurements}
     except Exception as e:
         logger.error(f"Global Intake Error: {str(e)}")
         return {"error": str(e), "status": "failed"}
@@ -357,13 +396,35 @@ async def get_stats(user_id: str = Query(...), days: int = Query(7)):
             if date_key in water_map:
                 water_map[date_key] += float(w['amount_ml'] or 0)
 
+        # 3. جلب إحصائيات النوم
+        sleep_res = supabase.table("sleep_logs").select("hours, created_at").eq("user_id", user_id).gte("created_at", start_str).execute()
+        sleep_data_list = sleep_res.data if sleep_res.data else []
+        sleep_map = { (start_date + timedelta(days=i)).strftime("%Y-%m-%d"): 0.0 for i in range(days) }
+        for s in sleep_data_list:
+            date_key = (s.get('created_at') or "")[:10]
+            if date_key in sleep_map:
+                sleep_map[date_key] += float(s['hours'] or 0)
+
+        # 4. جلب إحصائيات الخطوات
+        steps_res = supabase.table("steps_logs").select("steps, created_at").eq("user_id", user_id).gte("created_at", start_str).execute()
+        steps_data_list = steps_res.data if steps_res.data else []
+        steps_map = { (start_date + timedelta(days=i)).strftime("%Y-%m-%d"): 0.0 for i in range(days) }
+        for st in steps_data_list:
+            date_key = (st.get('created_at') or "")[:10]
+            if date_key in steps_map:
+                steps_map[date_key] += float(st['steps'] or 0)
+
         cal_result = [{"date": k, "value": v} for k, v in sorted(cal_map.items())]
         water_result = [{"date": k, "value": v} for k, v in sorted(water_map.items())]
+        sleep_result = [{"date": k, "value": v} for k, v in sorted(sleep_map.items())]
+        steps_result = [{"date": k, "value": v} for k, v in sorted(steps_map.items())]
         
         return {
             "status": "success", 
             "calories": cal_result,
-            "water": water_result
+            "water": water_result,
+            "sleep": sleep_result,
+            "steps": steps_result
         }
     except Exception as e:
         logger.error(f"Stats Error: {str(e)}")

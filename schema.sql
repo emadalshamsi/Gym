@@ -57,3 +57,25 @@ CREATE TABLE public.steps_logs (
     steps integer NOT NULL,
     created_at timestamp without time zone DEFAULT now()
 );
+
+-- 5. Body Measurements Table
+CREATE TABLE IF NOT EXISTS public.body_measurements (
+    id BIGSERIAL PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    gender TEXT DEFAULT 'male',
+    unit TEXT DEFAULT 'cm',
+    neck DECIMAL,
+    shoulder DECIMAL,
+    chest DECIMAL,
+    biceps_r DECIMAL,
+    biceps_l DECIMAL,
+    forearms_r DECIMAL,
+    forearms_l DECIMAL,
+    waist DECIMAL,
+    hips DECIMAL,
+    thighs_r DECIMAL,
+    thighs_l DECIMAL,
+    calves_r DECIMAL,
+    calves_l DECIMAL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
