@@ -98,6 +98,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String? leftPhotoId, rightPhotoId;
   double comparisonValue = 0.5;
   double leftScale = 1.0, rightScale = 1.0;
+  double leftRotation = 0.0, rightRotation = 0.0;
   Offset leftOffset = Offset.zero, rightOffset = Offset.zero;
   bool isAdjustMode = false;
   bool isAligning = false;
@@ -1821,8 +1822,8 @@ Widget _buildWaterBottle(double progress) {
           onPressed: () => setState(() {
             isAdjustMode = !isAdjustMode;
             if (!isAdjustMode) {
-              leftScale = 1.0; leftOffset = Offset.zero;
-              rightScale = 1.0; rightOffset = Offset.zero;
+              leftScale = 1.0; leftOffset = Offset.zero; leftRotation = 0.0;
+              rightScale = 1.0; rightOffset = Offset.zero; rightRotation = 0.0;
             }
           }),
           icon: Icon(isAdjustMode ? Icons.check_circle : Icons.tune, color: isAdjustMode ? Colors.green : const Color(0xFF4A80F0)),
@@ -1907,11 +1908,11 @@ Widget _buildWaterBottle(double progress) {
               },
               child: Stack(
                 children: [
-                  // Right photo (background)
                   Positioned.fill(
                     child: Transform(
                       transform: Matrix4.identity()
                         ..translate(rightOffset.dx, rightOffset.dy)
+                        ..rotateZ(rightRotation)
                         ..scale(rightScale),
                       alignment: Alignment.center,
                       child: Image.network(rightPhoto['photo_url'], fit: BoxFit.cover, 
@@ -1926,6 +1927,7 @@ Widget _buildWaterBottle(double progress) {
                       child: Transform(
                         transform: Matrix4.identity()
                           ..translate(leftOffset.dx, leftOffset.dy)
+                          ..rotateZ(leftRotation)
                           ..scale(leftScale),
                         alignment: Alignment.center,
                         child: Image.network(leftPhoto['photo_url'], fit: BoxFit.cover, 
@@ -2568,8 +2570,9 @@ Widget _buildWaterBottle(double progress) {
         body: jsonEncode({
           'img1_base64': leftP['photo_url'],
           'img2_base64': rightP['photo_url'],
+          'side': selectedPhotoSide.toLowerCase(),
         }),
-      );
+      ).timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -2577,22 +2580,24 @@ Widget _buildWaterBottle(double progress) {
           setState(() {
             // We align the right photo to match the left one
             rightScale = (data['alignment']['scale'] as num).toDouble();
-            // Offset logic: Gemini returns normalized shift 0-1
-            // We apply it to our 300x360 comparison area
+            rightRotation = (data['alignment']['rotation'] as num).toDouble();
+            // dx/dy logic (normalized to pixel area)
             rightOffset = Offset(
               (data['alignment']['dx'] as num).toDouble() * 300, 
               (data['alignment']['dy'] as num).toDouble() * 360
             );
-            isAdjustMode = true; // Switch to adjust mode to show current alignment
+            isAdjustMode = true; 
           });
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("AI Alignment Complete!")));
         } else {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("AI Error: ${data['error']}")));
         }
+      } else {
+         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Server Error: ${response.statusCode}")));
       }
     } catch (e) {
       debugPrint("AutoAlign Error: $e");
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Connection to AI failed.")));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Connection failed: $e")));
     } finally {
       if (mounted) setState(() => isAligning = false);
     }

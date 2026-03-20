@@ -103,6 +103,7 @@ class MealUpdateRequest(BaseModel):
 class AlignPhotosRequest(BaseModel):
     img1_base64: str
     img2_base64: str
+    side: str = "front"
 
 class GoalsUpdateRequest(BaseModel):
     user_id: str
@@ -486,12 +487,12 @@ async def align_photos(data: AlignPhotosRequest):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
     
     prompt = (
-        "Analyze these two progress photos. Detect the precise [x, y] coordinates for: "
-        "1. Nose, 2. Left Shoulder, 3. Right Shoulder in BOTH images. "
+        f"Analyze these two {data.side} progress photos. Detect the precise [x, y] coordinates for: "
+        "1. Left Eye (or Ear if side), 2. Right Eye (or Head Center if side), 3. Nose, 4. Left Shoulder, 5. Right Shoulder, 6. Navel. "
         "Coordinates must be normalized from 0 to 1000 (where 0,0 is top-left). "
         "Return ONLY a JSON object: "
-        '{"img1": {"nose": [x,y], "l_sh": [x,y], "r_sh": [x,y]}, '
-        '"img2": {"nose": [x,y], "l_sh": [x,y], "r_sh": [x,y]}}'
+        '{"img1": {"l_eye": [x,y], "r_eye": [x,y], "nose": [x,y], "l_sh": [x,y], "r_sh": [x,y], "navel": [x,y]}, '
+        '"img2": {"l_eye": [x,y], "r_eye": [x,y], "nose": [x,y], "l_sh": [x,y], "r_sh": [x,y], "navel": [x,y]}}'
     )
 
     payload = {
@@ -522,24 +523,64 @@ async def align_photos(data: AlignPhotosRequest):
         
         pts = json.loads(match.group(1))
         
-        # حساب المحاذاة (Align img2 to img1)
-        # 1. Scale based on shoulder width
-        w1 = ((pts['img1']['l_sh'][0] - pts['img1']['r_sh'][0])**2 + (pts['img1']['l_sh'][1] - pts['img1']['r_sh'][1])**2)**0.5
-        w2 = ((pts['img2']['l_sh'][0] - pts['img2']['r_sh'][0])**2 + (pts['img2']['l_sh'][1] - pts['img2']['r_sh'][1])**2)**0.5
+        # math for alignment (Align img2 to img1)
+        import math
         
+        def get_dist(p1, p2):
+            return ((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2)**0.5
+
+        def get_angle(p1, p2):
+            return math.atan2(p2[1]-p1[1], p2[0]-p1[0])
+
+        i1, i2 = pts.get('img1', {}), pts.get('img2', {})
+        if not i1 or not i2:
+            return {"error": "AI could not identify body parts", "status": "failed"}
+
+        # helper to get best available points
+        def get_ref_points(img_pts):
+            # Prefer shoulders, fallback to eyes/ears
+            p_l = img_pts.get('l_sh') or img_pts.get('l_eye')
+            p_r = img_pts.get('r_sh') or img_pts.get('r_eye')
+            center = img_pts.get('nose') or img_pts.get('l_eye') or img_pts.get('l_sh')
+            return p_l, p_r, center
+
+        l1, r1, c1 = get_ref_points(i1)
+        l2, r2, c2 = get_ref_points(i2)
+
+        if not all([l1, r1, c1, l2, r2, c2]):
+            return {"error": "Missing key landmarks for alignment", "status": "failed"}
+        
+        # 1. Rotation
+        ang1 = get_angle(l1, r1)
+        ang2 = get_angle(l2, r2)
+        rotation = ang1 - ang2
+        
+        # 2. Scale
+        w1 = get_dist(l1, r1)
+        w2 = get_dist(l2, r2)
+        
+        if w2 == 0: return {"error": "Could not calculate size", "status": "failed"}
+        scale = w1 / w2
+        
+        # 3. Translation
+        dx = c1[0] - (c2[0] * scale)
+        dy = c1[1] - (c2[1] * scale)
         if w2 == 0: return {"error": "Landmarks not found", "status": "failed"}
         scale = w1 / w2
         
-        # 2. Offset based on nose position
-        # We want: img2_nose * scale + offset = img1_nose
-        dx = pts['img1']['nose'][0] - (pts['img2']['nose'][0] * scale)
-        dy = pts['img1']['nose'][1] - (pts['img2']['nose'][1] * scale)
+        # 3. Translation (align nose/center)
+        # Apply scale and rotation to img2 nose to see where it would land
+        # For simplicity in Flutter, we return center-based relative shift
+        # img2_nose_scaled = img2_nose * scale
+        dx = i1['nose'][0] - (i2['nose'][0] * scale)
+        dy = i1['nose'][1] - (i2['nose'][1] * scale)
 
         return {
             "status": "success",
             "alignment": {
                 "scale": scale,
-                "dx": dx / 1000.0, # Convert back to normalized 0-1 for Flutter
+                "rotation": rotation,
+                "dx": dx / 1000.0,
                 "dy": dy / 1000.0
             }
         }
