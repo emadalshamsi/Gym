@@ -20,6 +20,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -42,9 +43,9 @@ jobs:
           cat init_log.txt pub_log.txt build_log.txt > complete_error_log.txt
 
       - name: Commit Built Files
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "Auto-build Flutter web [skip ci]"
-          file_pattern: "build/web/ web/ index.html complete_error_log.txt"
-          skip_dirty_check: false
-          # Pushes the compiled frontend back into the main branch so Render can serve it
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add build/web web/ index.html complete_error_log.txt || true
+          git commit -m "Auto-build Flutter web [skip ci]" || true
+          git push origin main || true
