@@ -30,9 +30,10 @@ jobs:
 
       - name: Initialize Web Wrapper
         run: |
-          # The web/ folder wrapper might not exist if built strictly on Zapp
-          # This command safely injects the necessary web build files
-          flutter create . --platforms web
+          # Ensure web support is enabled on this runner
+          flutter config --enable-web
+          # Safely inject the necessary web build files without stopping on warnings
+          flutter create --org com.gym.app --project-name flutter_app . || true
 
       - name: Install Dependencies
         run: flutter pub get
