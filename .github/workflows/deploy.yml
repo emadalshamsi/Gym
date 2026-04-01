@@ -30,21 +30,21 @@ jobs:
 
       - name: Initialize Web Wrapper
         run: |
-          # Ensure web support is enabled on this runner
-          flutter config --enable-web
-          # Safely inject the necessary web build files without stopping on warnings
-          flutter create --org com.gym.app --project-name flutter_app . || true
+          flutter config --enable-web > init_log.txt 2>&1 || true
+          flutter create --org com.gym.app --project-name flutter_app . >> init_log.txt 2>&1 || true
 
       - name: Install Dependencies
-        run: flutter pub get
+        run: flutter pub get > pub_log.txt 2>&1 || true
 
       - name: Build Web App
-        run: flutter build web --release
+        run: |
+          flutter build web --release > build_log.txt 2>&1 || true
+          cat init_log.txt pub_log.txt build_log.txt > complete_error_log.txt
 
       - name: Commit Built Files
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "Auto-build Flutter web [skip ci]"
-          file_pattern: "build/web/ web/ index.html"
+          file_pattern: "build/web/ web/ index.html complete_error_log.txt"
           skip_dirty_check: false
           # Pushes the compiled frontend back into the main branch so Render can serve it
