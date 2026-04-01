@@ -1,0 +1,50 @@
+name: Build and Deploy Flutter Web
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.dart'
+      - 'pubspec.yaml'
+      - 'assets/**'
+      # Do not trigger when the bot commits the build folder itself
+      - '!build/**'
+
+jobs:
+  build-and-commit:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          architecture: x64
+
+      - name: Initialize Web Wrapper
+        run: |
+          # The web/ folder wrapper might not exist if built strictly on Zapp
+          # This command safely injects the necessary web build files
+          flutter create . --platforms web
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Web App
+        run: flutter build web --release
+
+      - name: Commit Built Files
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Auto-build Flutter web [skip ci]"
+          file_pattern: "build/web/ web/ index.html"
+          skip_dirty_check: false
+          # Pushes the compiled frontend back into the main branch so Render can serve it

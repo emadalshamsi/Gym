@@ -1,5 +1,7 @@
 import os, requests, json, re, logging
 from fastapi import FastAPI, Form, Query, Request, Body
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional
 from fastapi.middleware.cors import CORSMiddleware
@@ -587,6 +589,15 @@ async def align_photos(data: AlignPhotosRequest):
     except Exception as e:
         logger.error(f"Align Error: {e}")
         return {"error": str(e), "status": "failed"}
+
+# --- 7. Serve Flutter Web Frontend ---
+# This mounts the Flutter build folder to the root URL (/)
+if os.path.exists("build/web"):
+    app.mount("/", StaticFiles(directory="build/web", html=True), name="flutter_web")
+else:
+    @app.get("/")
+    async def root():
+        return {"message": "Solean AI Fitness Backend API. Flutter web build not found."}
 
 if __name__ == "__main__":
     import uvicorn
