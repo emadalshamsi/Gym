@@ -46,6 +46,7 @@ jobs:
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          git add build/web web/ index.html complete_error_log.txt || true
+          git add build/web web/ index.html || true
+          git add complete_error_log.txt || true
           git commit -m "Auto-build Flutter web [skip ci]" || true
           git push origin main || true
